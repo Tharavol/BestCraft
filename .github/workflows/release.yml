@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # Stable releases only -- v1.2.0-alpha.1 etc. go through prerelease.yml
+      # instead, so the two workflows never both fire on the same tag.
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
+        env:
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+          # Optional. Set these repository secrets to publish automatically;
+          # without them the packager just attaches the zip to the GitHub
+          # release. Publishing to CurseForge would additionally need a
+          # CF_API_KEY secret and ## X-Curse-Project-ID in the .toc; neither
+          # exists, so that path is deliberately not wired up.
+          WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+
+      # CI's dry-run build verifies layout too, but it skips itself on this
+      # exact commit (see ci.yml) since packager won't double-build a tagged
+      # commit. This is the only place the archive that actually ships gets
+      # checked.
+      - name: Verify archive layout
+        run: |
+          zip=$(ls .release/*.zip)
+          unzip -l "$zip"
+          unzip -l "$zip" | grep -q 'BestCraft/BestCraft.toc'
+          unzip -l "$zip" | grep -q 'BestCraft/Core.lua'
+
+          if unzip -l "$zip" | grep -q 'BestCraft/tests/'; then
+            echo "tests/ should not ship in the release archive (see .pkgmeta)" >&2
+            exit 1
+          fi
+          if unzip -l "$zip" | grep -q 'BestCraft/CHANGELOG.md'; then
+            echo "CHANGELOG.md should not ship in the release archive (see .pkgmeta)" >&2
+            exit 1
+          fi

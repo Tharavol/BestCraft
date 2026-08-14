@@ -1,0 +1,12 @@
+package-as: BestCraft
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - .github
+  - .luacheckrc
+  - scripts
+  - tests
+  - CHANGELOG.md

@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: BestCraft
+## Notes: Adds a button to the Place Crafting Order screen that queues the highest quality reagents for a crafting order into CraftSim's CraftQueue for purchase
+## Author: Tharavol, Claude
+## Version: @project-version@
+## IconTexture: Interface\Icons\inv_misc_symbolofkings_01
+## X-License: MIT
+## Dependencies: CraftSim
+
+## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and queues it into CraftSim's CraftQueue -- so CraftSim's existing shopping-list generation tells you exactly what to go buy. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires CraftSim. Source and issues: https://github.com/Tharavol/BestCraft
+
+Core.lua
