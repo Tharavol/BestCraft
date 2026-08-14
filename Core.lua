@@ -7,6 +7,10 @@
 
 local ADDON_NAME, ns = ...
 
+-- Debug/testing access only -- not a stable API. Lets /run reach ns.OrderScreen etc.
+-- without a slash command existing yet.
+_G.BestCraft = ns
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 

@@ -33,6 +33,11 @@ local function NewEnv(addonsLoaded, reagentQualities)
     }
 
     local env = setmetatable({}, { __index = _G })
+    -- Real WoW addons' `_G` *is* the shared global table they run in. Point the stub's
+    -- `_G` back at itself so a file doing `_G.Something = x` (Core.lua does, for debug
+    -- access) writes into this test's isolated env instead of leaking into the real
+    -- process-wide _G and bleeding into other tests.
+    env._G = env
     env.CreateFrame = function(...)
         local f = MakeFrame()
         table.insert(frames, f)
