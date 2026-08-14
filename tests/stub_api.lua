@@ -57,7 +57,7 @@ end
 
 M.MakeFrame = MakeFrame
 
-local function NewEnv(addonsLoaded, reagentQualities)
+local function NewEnv(addonsLoaded, reagentQualities, itemNames)
     local frames = {}
 
     local api = {
@@ -66,6 +66,9 @@ local function NewEnv(addonsLoaded, reagentQualities)
         -- itemID -> reagent quality tier (1-3), for GetItemReagentQualityByItemInfo. An
         -- itemID absent from this table returns nil, matching a reagent with no quality tier.
         reagentQualities = reagentQualities or {},
+        -- itemID -> item name, for C_Item.GetItemInfo. An itemID absent from this table
+        -- returns nil, matching an item whose client-side info isn't cached/known yet.
+        itemNames = itemNames or {},
     }
 
     local env = setmetatable({}, { __index = _G })
@@ -84,6 +87,9 @@ local function NewEnv(addonsLoaded, reagentQualities)
     }
     env.C_TradeSkillUI = {
         GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
+    }
+    env.C_Item = {
+        GetItemInfo = function(itemID) return api.itemNames[itemID] end,
     }
     -- Table+methodName variant only -- the addon never hooks a bare global function.
     env.hooksecurefunc = function(tbl, name, hookFn)
@@ -129,8 +135,10 @@ end
 -- create itself and must instead find already sitting in the global namespace.
 -- opts.reagentQualities: optional { [itemID] = qualityTier } fed to
 -- C_TradeSkillUI.GetItemReagentQualityByItemInfo.
+-- opts.itemNames: optional { [itemID] = name } fed to C_Item.GetItemInfo.
 function M.LoadAddon(rootDir, tocPath, opts)
-    local env, api, frames = NewEnv(opts and opts.addonsLoaded, opts and opts.reagentQualities)
+    local env, api, frames = NewEnv(opts and opts.addonsLoaded, opts and opts.reagentQualities,
+        opts and opts.itemNames)
     if opts and opts.presetGlobals then
         for k, v in pairs(opts.presetGlobals) do
             env[k] = v

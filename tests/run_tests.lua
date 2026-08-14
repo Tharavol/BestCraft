@@ -14,6 +14,7 @@ dofile("tests/core_spec.lua")(stub, T)
 dofile("tests/order_screen_spec.lua")(stub, T)
 dofile("tests/order_reagents_spec.lua")(stub, T)
 dofile("tests/order_recipe_data_spec.lua")(stub, T)
+dofile("tests/recraft_shopping_list_spec.lua")(stub, T)
 dofile("tests/order_queue_button_spec.lua")(stub, T)
 
 os.exit(T.Summary() and 0 or 1)

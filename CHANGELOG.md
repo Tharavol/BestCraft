@@ -15,5 +15,7 @@ All notable changes to the BestCraft addon are documented in this file.
   confirmed end-to-end in-game
 - Add a "+ CraftQueue" button to the order screen, anchored to `Form.TrackRecipeCheckbox`
   like CraftSim's own equivalent button on the other two screens; enabled only when
-  `CraftSim.CRAFTQ:IsRecipeQueueable` agrees (disabled on recraft orders, which CraftSim's
-  CraftQueue doesn't support at all); clicking calls `CraftSim.CRAFTQ:AddRecipe`
+  `CraftSim.CRAFTQ:IsRecipeQueueable` agrees; clicking calls `CraftSim.CRAFTQ:AddRecipe`
+- Recraft orders: since CraftSim's CraftQueue doesn't support recraft recipes at all, the
+  button switches to "+ Shopping List" and builds an Auctionator shopping list directly via
+  `Auctionator.API.v1`, using the same highest-quality reagent selection

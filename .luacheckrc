@@ -13,6 +13,7 @@ ignore = {
 
 read_globals = {
     "C_AddOns",
+    "C_Item",
     "C_TradeSkillUI",
     "CraftSimAPI",
     "CreateFrame",
@@ -21,4 +22,8 @@ read_globals = {
     -- Blizzard's load-on-demand Crafting Orders customer frame. See
     -- docs/order-screen-research.md for how it was identified.
     "ProfessionsCustomerOrdersFrame",
+
+    -- Auctionator's addon table (optional dependency, used only for recraft orders --
+    -- see Modules/RecraftShoppingList.lua).
+    "Auctionator",
 }

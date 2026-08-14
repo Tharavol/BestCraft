@@ -16,13 +16,13 @@ local function BuildSchematic()
     }
 end
 
-local function BuildFakeForm(stub)
+local function BuildFakeForm(stub, isRecraft)
     local form = stub.MakeFrame()
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.transaction = {
         GetRecipeID = function() return 12345 end,
         GetRecipeSchematic = BuildSchematic,
-        IsRecraft = function() return false end,
+        IsRecraft = function() return isRecraft == true end,
     }
     return form
 end
@@ -65,7 +65,7 @@ return function(stub, T)
         T.AssertFalse(button:IsEnabled(), "expected the button disabled without CraftSimAPI")
     end)
 
-    T.Test("disables the button when the recipe isn't queueable (e.g. recraft)", function()
+    T.Test("disables the button when the recipe isn't queueable", function()
         local fakeForm = BuildFakeForm(stub)
         local mockRecipeData
         mockRecipeData = { isRecraft = true, SetReagentsByCraftingReagentInfoTbl = function() end }
@@ -173,5 +173,66 @@ return function(stub, T)
         fakeForm:UpdateReagentSlots()
 
         T.AssertTrue(button:IsEnabled(), "expected enabled after UpdateReagentSlots re-checked state")
+    end)
+
+    T.Test("shows the shopping-list label and disables without Auctionator, on a recraft order", function()
+        local fakeForm = BuildFakeForm(stub, true)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
+        })
+        local button = loaded.frames[#loaded.frames]
+        T.AssertEqual(button:GetText(), "+ Shopping List", "expected the recraft label")
+        T.AssertFalse(button:IsEnabled(), "expected disabled without Auctionator")
+    end)
+
+    T.Test("enables the recraft button when Auctionator is available and reagents exist", function()
+        local fakeForm = BuildFakeForm(stub, true)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = {
+                ProfessionsCustomerOrdersFrame = { Form = fakeForm },
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function() end,
+                } } },
+            },
+        })
+        local button = loaded.frames[#loaded.frames]
+        T.AssertTrue(button:IsEnabled(), "expected enabled with Auctionator and reagents present")
+    end)
+
+    T.Test("clicking the recraft button creates a shopping list instead of calling AddRecipe", function()
+        local fakeForm = BuildFakeForm(stub, true)
+        local createCalls = {}
+        local craftQueueTouched = false
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = {
+                ProfessionsCustomerOrdersFrame = { Form = fakeForm },
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function(_, _, searchStrings) table.insert(createCalls, searchStrings) end,
+                } } },
+                -- Present to prove the recraft path never touches it, per
+                -- CraftSim.CRAFTQ:IsRecipeQueueable rejecting recraft recipes outright.
+                CraftSimAPI = {
+                    GetRecipeData = function() craftQueueTouched = true end,
+                    GetCraftSim = function() craftQueueTouched = true end,
+                },
+            },
+        })
+
+        local button = loaded.frames[#loaded.frames]
+        button:FireScript("OnClick")
+
+        T.AssertEqual(#createCalls, 1, "expected one shopping list created")
+        T.AssertFalse(craftQueueTouched, "expected the CraftQueue path never touched for a recraft order")
     end)
 end
