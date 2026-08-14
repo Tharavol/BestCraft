@@ -16,6 +16,7 @@ read_globals = {
     "C_TradeSkillUI",
     "CraftSimAPI",
     "CreateFrame",
+    "hooksecurefunc",
 
     -- Blizzard's load-on-demand Crafting Orders customer frame. See
     -- docs/order-screen-research.md for how it was identified.

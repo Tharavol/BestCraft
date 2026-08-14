@@ -9,20 +9,56 @@
 
 local M = {}
 
+-- A frame/button stand-in with the slice of the real widget API this addon's code (and its
+-- tests, when building fake forms/frames by hand) actually touches. Self-contained -- no
+-- captures over NewEnv's locals -- so it's usable both as CreateFrame's return value and
+-- directly by specs via stub.MakeFrame() when they need a realistic fake form/button rather
+-- than a bare {}.
+local function MakeFrame()
+    local f = { _events = {}, _shown = true, _enabled = true }
+    function f:RegisterEvent(event) self._events[event] = true end
+    function f:UnregisterEvent(event) self._events[event] = nil end
+    function f:SetScript(scriptType, fn)
+        self._scripts = self._scripts or {}
+        self._scripts[scriptType] = fn
+    end
+    function f:GetScript(scriptType) return self._scripts and self._scripts[scriptType] end
+    -- Real HookScript runs every hooked handler plus any SetScript handler, in registration
+    -- order; this only needs to support multiple HookScript calls for the same event, which
+    -- is all the addon code actually does.
+    function f:HookScript(scriptType, fn)
+        self._hooks = self._hooks or {}
+        self._hooks[scriptType] = self._hooks[scriptType] or {}
+        table.insert(self._hooks[scriptType], fn)
+    end
+    function f:FireScript(scriptType, ...)
+        if self._scripts and self._scripts[scriptType] then
+            self._scripts[scriptType](self, ...)
+        end
+        if self._hooks and self._hooks[scriptType] then
+            for _, fn in ipairs(self._hooks[scriptType]) do
+                fn(self, ...)
+            end
+        end
+    end
+    function f:SetPoint(...) self._point = { ... } end
+    function f:SetSize(w, h) self._width, self._height = w, h end
+    function f:SetWidth(w) self._width = w end
+    function f:SetHeight(h) self._height = h end
+    function f:SetText(text) self._text = text end
+    function f:GetText() return self._text end
+    function f:Show() self._shown = true end
+    function f:Hide() self._shown = false end
+    function f:IsShown() return self._shown end
+    function f:SetEnabled(enabled) self._enabled = enabled and true or false end
+    function f:IsEnabled() return self._enabled end
+    return f
+end
+
+M.MakeFrame = MakeFrame
+
 local function NewEnv(addonsLoaded, reagentQualities)
     local frames = {}
-
-    local function MakeFrame()
-        local f = { _events = {} }
-        function f:RegisterEvent(event) self._events[event] = true end
-        function f:UnregisterEvent(event) self._events[event] = nil end
-        function f:SetScript(scriptType, fn)
-            self._scripts = self._scripts or {}
-            self._scripts[scriptType] = fn
-        end
-        function f:GetScript(scriptType) return self._scripts and self._scripts[scriptType] end
-        return f
-    end
 
     local api = {
         addonsLoaded = addonsLoaded or {},
@@ -49,6 +85,14 @@ local function NewEnv(addonsLoaded, reagentQualities)
     env.C_TradeSkillUI = {
         GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
     }
+    -- Table+methodName variant only -- the addon never hooks a bare global function.
+    env.hooksecurefunc = function(tbl, name, hookFn)
+        local original = tbl[name]
+        tbl[name] = function(...)
+            if original then original(...) end
+            hookFn(...)
+        end
+    end
     env.print = function(...)
         local parts = {}
         for i = 1, select("#", ...) do
