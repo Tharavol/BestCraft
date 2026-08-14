@@ -69,8 +69,16 @@ end
 -- Loads the addon fresh: a new stub environment and a new shared `ns` table, exactly
 -- like WoW handing each file the same addon table via `...`.
 -- opts.addonsLoaded: optional set ({ CraftSim = true }) fed to C_AddOns.IsAddOnLoaded.
+-- opts.presetGlobals: optional table of globals (e.g. a fake ProfessionsCustomerOrdersFrame)
+-- set on the environment before any addon file executes, for frames the addon doesn't
+-- create itself and must instead find already sitting in the global namespace.
 function M.LoadAddon(rootDir, tocPath, opts)
     local env, api, frames = NewEnv(opts and opts.addonsLoaded)
+    if opts and opts.presetGlobals then
+        for k, v in pairs(opts.presetGlobals) do
+            env[k] = v
+        end
+    end
     local ns = {}
     for _, file in ipairs(TocFileList(tocPath)) do
         local chunk = assert(loadfile(rootDir .. "/" .. file))

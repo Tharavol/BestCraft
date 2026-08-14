@@ -10,3 +10,5 @@
 ## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and queues it into CraftSim's CraftQueue -- so CraftSim's existing shopping-list generation tells you exactly what to go buy. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires CraftSim. Source and issues: https://github.com/Tharavol/BestCraft
 
 Core.lua
+
+Modules/OrderScreen.lua
