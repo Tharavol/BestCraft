@@ -11,5 +11,5 @@ All notable changes to the BestCraft addon are documented in this file.
   independent optimization -- ambiguous slots (multiple choices, no quality tier) are left
   alone rather than guessed at (#2)
 - Build a `CraftSim.RecipeData` for the order's recipe with those reagent choices applied,
-  via CraftSim's own `RecipeData:SetOrder()` path (#3) -- construction logic only, not yet
-  wired to a button or to `CraftSim.CRAFTQ:AddRecipe`, and not yet validated in-game
+  via `CraftSimAPI:GetRecipeData` + `RecipeData:SetReagentsByCraftingReagentInfoTbl` (#3) --
+  confirmed end-to-end in-game; not yet wired to a button or to `CraftSim.CRAFTQ:AddRecipe`

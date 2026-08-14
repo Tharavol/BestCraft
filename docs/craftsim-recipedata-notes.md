@@ -90,11 +90,19 @@ as a table pre-submission, but its `.reagents` field is `nil` at that point -- c
 in-game -- so there was never a "free" version of this path available for a draft order
 regardless of the `SetOrder` issue above.
 
+## Confirmed end-to-end in-game
+
+Walked `rd.reagentData.requiredReagents` after a real `BuildRecipeData()` call: every
+quality-ranked slot has the higher-ranked item variant at its full required quantity and the
+lower rank at zero; single-variant basic slots got their full required quantity directly.
+`SetReagentsByCraftingReagentInfoTbl` does exactly what its use here needed.
+
 ## Still open
 
-- Whether `SetReagentsByCraftingReagentInfoTbl` is fully correct end-to-end (does the
-  resulting `recipeData` actually reflect the chosen reagents when queued via
-  `CraftSim.CRAFTQ:AddRecipe`?) -- needs an in-game check once that wiring exists.
+- Whether the resulting `recipeData` behaves correctly once handed to
+  `CraftSim.CRAFTQ:AddRecipe` (does its shopping-list generation pick up these reagent
+  choices the same way it would for a normally-queued recipe?) -- needs an in-game check
+  once that wiring exists.
 - Recraft orders specifically (issue #15): schematic shape was already confirmed to need no
   special handling (see `docs/order-screen-research.md`), but this construction path hasn't
   been tried against a real recraft order yet.
