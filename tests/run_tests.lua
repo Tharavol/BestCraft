@@ -12,5 +12,7 @@ local stub = dofile("tests/stub_api.lua")
 
 dofile("tests/core_spec.lua")(stub, T)
 dofile("tests/order_screen_spec.lua")(stub, T)
+dofile("tests/order_reagents_spec.lua")(stub, T)
+dofile("tests/order_recipe_data_spec.lua")(stub, T)
 
 os.exit(T.Summary() and 0 or 1)

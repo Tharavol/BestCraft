@@ -12,3 +12,5 @@
 Core.lua
 
 Modules/OrderScreen.lua
+Modules/OrderReagents.lua
+Modules/OrderRecipeData.lua

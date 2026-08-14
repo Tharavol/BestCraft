@@ -9,7 +9,7 @@
 
 local M = {}
 
-local function NewEnv(addonsLoaded)
+local function NewEnv(addonsLoaded, reagentQualities)
     local frames = {}
 
     local function MakeFrame()
@@ -27,6 +27,9 @@ local function NewEnv(addonsLoaded)
     local api = {
         addonsLoaded = addonsLoaded or {},
         chatLog = {},
+        -- itemID -> reagent quality tier (1-3), for GetItemReagentQualityByItemInfo. An
+        -- itemID absent from this table returns nil, matching a reagent with no quality tier.
+        reagentQualities = reagentQualities or {},
     }
 
     local env = setmetatable({}, { __index = _G })
@@ -37,6 +40,9 @@ local function NewEnv(addonsLoaded)
     end
     env.C_AddOns = {
         IsAddOnLoaded = function(name) return api.addonsLoaded[name] == true end,
+    }
+    env.C_TradeSkillUI = {
+        GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
     }
     env.print = function(...)
         local parts = {}
@@ -72,8 +78,10 @@ end
 -- opts.presetGlobals: optional table of globals (e.g. a fake ProfessionsCustomerOrdersFrame)
 -- set on the environment before any addon file executes, for frames the addon doesn't
 -- create itself and must instead find already sitting in the global namespace.
+-- opts.reagentQualities: optional { [itemID] = qualityTier } fed to
+-- C_TradeSkillUI.GetItemReagentQualityByItemInfo.
 function M.LoadAddon(rootDir, tocPath, opts)
-    local env, api, frames = NewEnv(opts and opts.addonsLoaded)
+    local env, api, frames = NewEnv(opts and opts.addonsLoaded, opts and opts.reagentQualities)
     if opts and opts.presetGlobals then
         for k, v in pairs(opts.presetGlobals) do
             env[k] = v
