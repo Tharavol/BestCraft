@@ -1,5 +1,14 @@
 # Constructing a CraftSim.RecipeData for an order-screen recipe
 
+> **Correction (confirmed in-game):** `CraftSim` is never published as a global -- every
+> file in CraftSim's own source does `local CraftSim = select(2, ...)`, never a global
+> assignment, and `/run print(CraftSim)` from another addon reads `nil`. The real external
+> entry point is **`CraftSimAPI`** (`Util/API.lua`), specifically
+> `CraftSimAPI:GetRecipeData(options)`, which wraps the exact same constructor options
+> documented below. Everywhere below that says `CraftSim.RecipeData(options)`, read
+> `CraftSimAPI:GetRecipeData(options)` instead -- kept as originally written since the
+> options shape itself is unaffected, only the entry point.
+
 Findings from reading CraftSim's source (`Classes/RecipeData.lua`, `Classes/ProfessionData.lua`)
 and the sibling `ShoppingConverter` addon's `Resolver.lua`, which already reverse-engineers part
 of this shape to read CraftSim's craft queue back out. Combined with the in-game recon in
