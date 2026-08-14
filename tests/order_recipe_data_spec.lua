@@ -31,4 +31,54 @@ return function(stub, T)
         }
         T.AssertEqual(loaded.ns.OrderScreen:BuildRecipeData(), nil, "expected nil without a recipeID")
     end)
+
+    T.Test("constructs without orderData and applies reagents via SetReagentsByCraftingReagentInfoTbl", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+
+        local getRecipeDataArgs
+        local setReagentsArgs
+        -- Forward-declared: a local's scope only begins after its whole `local x = ...`
+        -- statement, so a `mockRecipeData` referenced *inside* that same initializer would
+        -- resolve to an outer/global mockRecipeData (nil here), not this table.
+        local mockRecipeData
+        mockRecipeData = {
+            SetReagentsByCraftingReagentInfoTbl = function(self, tbl)
+                T.AssertEqual(self, mockRecipeData, "expected method call, self bound correctly")
+                setReagentsArgs = tbl
+            end,
+        }
+        loaded.env.CraftSimAPI = {
+            GetRecipeData = function(_, options)
+                getRecipeDataArgs = options
+                return mockRecipeData
+            end,
+        }
+
+        loaded.ns.OrderScreen.form = {
+            transaction = {
+                GetRecipeID = function() return 12345 end,
+                GetRecipeSchematic = function()
+                    return {
+                        reagentSlotSchematics = {
+                            {
+                                dataSlotIndex = 1, required = true, quantityRequired = 20,
+                                reagents = { { itemID = 111 } },
+                            },
+                        },
+                    }
+                end,
+                IsRecraft = function() return false end,
+            },
+        }
+
+        local result = loaded.ns.OrderScreen:BuildRecipeData()
+
+        T.AssertEqual(result, mockRecipeData, "expected the constructed RecipeData to be returned")
+        T.AssertEqual(getRecipeDataArgs.recipeID, 12345, "expected recipeID passed to GetRecipeData")
+        T.AssertEqual(getRecipeDataArgs.orderData, nil, "expected no orderData -- see the RecipeData notes doc")
+        T.AssertEqual(getRecipeDataArgs.isRecraft, false, "expected isRecraft passed through")
+        T.AssertEqual(#setReagentsArgs, 1, "expected one reagent entry")
+        T.AssertEqual(setReagentsArgs[1].reagent.itemID, 111, "expected itemID nested under .reagent")
+        T.AssertEqual(setReagentsArgs[1].quantity, 20, "expected quantityRequired carried through")
+    end)
 end

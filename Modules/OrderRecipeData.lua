@@ -2,15 +2,19 @@
 -- SPDX-License-Identifier: MIT
 --
 -- Builds a CraftSim.RecipeData for the order screen's current recipe, with its reagent
--- slots pre-filled to the highest-quality choice from OrderReagents.lua. Relies on
--- CraftSim.RecipeData:SetOrder() (via the `orderData` constructor option) to apply those
--- choices itself -- see docs/craftsim-recipedata-notes.md for why that's CraftSim's own
--- tested path for customer-provided order reagents, not something reimplemented here.
+-- slots pre-filled to the highest-quality choice from OrderReagents.lua.
 --
 -- Goes through CraftSimAPI:GetRecipeData(), not CraftSim.RecipeData directly -- CraftSim's
 -- internal addon table is never published as a global (confirmed in-game: `CraftSim` reads
 -- as nil from another addon's context), only CraftSimAPI (Util/API.lua) is, and its
 -- GetRecipeData wraps the exact same constructor options.
+--
+-- Does NOT pass `orderData` to the constructor / RecipeData:SetOrder() -- confirmed in-game
+-- that SetOrder unconditionally calls C_TradeSkillUI.GetCraftingOperationInfoForOrder(...,
+-- self.orderData.orderID, ...), which throws when orderID is nil, i.e. for any order that
+-- hasn't been submitted yet (see docs/craftsim-recipedata-notes.md). Reagent choices are
+-- applied afterwards instead, via RecipeData:SetReagentsByCraftingReagentInfoTbl(), which
+-- only touches reagent allocation and never calls that API.
 --
 -- Unlike OrderReagents.lua's slot-selection logic, this cannot be meaningfully unit tested
 -- without CraftSim's real classes loaded, so it leans on pcall the same way ShoppingConverter
@@ -42,17 +46,22 @@ function OrderScreen:BuildRecipeData()
         return nil
     end
 
-    local reagentEntries = self:GetBestQualityReagentEntries(schematicInfo)
-
     local constructOk, recipeData = pcall(CraftSimAPI.GetRecipeData, CraftSimAPI, {
         recipeID = recipeID,
-        orderData = {
-            reagents = reagentEntries,
-            isRecraft = isRecraft,
-        },
+        isRecraft = isRecraft,
     })
-
     if not constructOk or not recipeData then
+        return nil
+    end
+
+    local reagentEntries = self:GetBestQualityReagentEntries(schematicInfo)
+    local craftingReagentInfoTbl = {}
+    for _, entry in ipairs(reagentEntries) do
+        table.insert(craftingReagentInfoTbl, { reagent = { itemID = entry.itemID }, quantity = entry.quantity })
+    end
+
+    local setOk = pcall(recipeData.SetReagentsByCraftingReagentInfoTbl, recipeData, craftingReagentInfoTbl)
+    if not setOk then
         return nil
     end
 

@@ -45,10 +45,13 @@ local function PickBestReagent(slot)
     return nil
 end
 
--- Builds a CraftingOrderReagentInfo-shaped array (the `reagent = { itemID, dataSlotIndex }`
--- wrapping CraftSim.RecipeData:GetOrderReagentDescriptor already knows how to read -- see
--- docs/craftsim-recipedata-notes.md) from a recipe schematic's reagent slots, choosing the
--- highest-quality item per slot. Slots with no confident choice are omitted, not guessed.
+-- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
+-- schematic's reagent slots, choosing the highest-quality item per slot and its full
+-- required quantity. Slots with no confident choice are omitted, not guessed. Callers
+-- reshape this into whatever specific CraftSim.RecipeData method needs -- see
+-- docs/craftsim-recipedata-notes.md for why that ended up being
+-- SetReagentsByCraftingReagentInfoTbl, not the orderData/SetOrder path this shape was
+-- originally built for.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
 function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
     local entries = {}
@@ -56,7 +59,9 @@ function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
         local itemID = PickBestReagent(slot)
         if itemID then
             table.insert(entries, {
-                reagent = { itemID = itemID, dataSlotIndex = slot.dataSlotIndex },
+                itemID = itemID,
+                quantity = slot.quantityRequired,
+                dataSlotIndex = slot.dataSlotIndex,
                 required = slot.required,
             })
         end

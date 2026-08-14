@@ -1,105 +1,105 @@
 # Constructing a CraftSim.RecipeData for an order-screen recipe
 
-> **Correction (confirmed in-game):** `CraftSim` is never published as a global -- every
-> file in CraftSim's own source does `local CraftSim = select(2, ...)`, never a global
-> assignment, and `/run print(CraftSim)` from another addon reads `nil`. The real external
-> entry point is **`CraftSimAPI`** (`Util/API.lua`), specifically
-> `CraftSimAPI:GetRecipeData(options)`, which wraps the exact same constructor options
-> documented below. Everywhere below that says `CraftSim.RecipeData(options)`, read
-> `CraftSimAPI:GetRecipeData(options)` instead -- kept as originally written since the
-> options shape itself is unaffected, only the entry point.
-
-Findings from reading CraftSim's source (`Classes/RecipeData.lua`, `Classes/ProfessionData.lua`)
-and the sibling `ShoppingConverter` addon's `Resolver.lua`, which already reverse-engineers part
-of this shape to read CraftSim's craft queue back out. Combined with the in-game recon in
-`docs/order-screen-research.md`, this is the current best plan for building a `RecipeData` for
-an order the player is creating (as customer), not fulfilling.
-
-## The constructor doesn't require the player to have the profession
+## Current approach (implemented in Modules/OrderRecipeData.lua)
 
 ```lua
----@class CraftSim.RecipeData.ConstructorOptions
----@field recipeID RecipeID
----@field isRecraft? boolean
----@field isWorkOrder? boolean
----@field orderData? CraftingOrderInfo
----@field crafterData? CraftSim.CrafterData  -- default: current player character
----@field forceCache? boolean
-
-CraftSim.RecipeData(options)  -- callable constructor, not :new(options) directly
+local recipeData = CraftSimAPI:GetRecipeData({ recipeID = recipeID, isRecraft = isRecraft })
+recipeData:SetReagentsByCraftingReagentInfoTbl(craftingReagentInfoTbl)
+-- craftingReagentInfoTbl: { { reagent = { itemID = X }, quantity = N }, ... }
 ```
 
-(`CraftSim.RecipeData:new(options)` in `Classes/RecipeData.lua:122` — but the class is a
-`CraftSimObject`, invoked as `CraftSim.RecipeData(options)`, same pattern as
-`CraftSim.ReagentData(self, schematicInfo)` at `Classes/RecipeData.lua:271`.)
+No `orderData` is passed to the constructor. Two corrections below explain why, both found
+by running the straightforward-looking version in-game and reading the actual error instead
+of assuming it would work.
 
-Do **not** pass `isWorkOrder = true` -- that flag makes the constructor pull
-`ProfessionsFrame.OrdersPage.OrderView.order` (`RecipeData.lua:189`), which is the
-*fulfillment*-side frame, not `ProfessionsCustomerOrdersFrame`. Pass `orderData` directly
-instead.
+### Correction 1: use CraftSimAPI, not the internal CraftSim table
 
-Two load-bearing facts from `ProfessionData:new` (`Classes/ProfessionData.lua:17-64`) and
-`RecipeData:new` (`Classes/RecipeData.lua:264`):
-
-- `self.professionInfo` comes from `C_TradeSkillUI.GetProfessionInfoByRecipeID(recipeID)` --
-  a recipeID-keyed global lookup, not tied to whichever profession window the player has open.
-- `C_TradeSkillUI.GetRecipeSchematic(recipeID, isRecraft)` has an explicit comment: *"is working
-  even if profession is not learned on the character!"*
-
-Both confirm building a `RecipeData` for a recipe the customer doesn't have is a supported,
-intended path, not something we'd be forcing through a gap in CraftSim's design.
-
-## SetOrder already applies customer-provided reagents -- for us, for free, maybe
+`CraftSim` is never published as a global -- confirmed in-game (`/run print(CraftSim)` from
+another addon's context reads `nil`) and confirmed by grepping CraftSim's own source: every
+file does `local CraftSim = select(2, ...)`, never a global assignment. The real external
+entry point is **`CraftSimAPI`** (`Util/API.lua`), which exposes:
 
 ```lua
-function CraftSim.RecipeData:SetOrder(orderData)
-    self.orderData = GUTIL:CopyTableDeep(orderData or {})
-    self.isRecraft = self.orderData.isRecraft
-    self.baseOperationInfo = C_TradeSkillUI.GetCraftingOperationInfoForOrder(...)
-    self:ApplyOrderReagentsToSlots()
+function CraftSimAPI:GetRecipeData(options) return CraftSim.RecipeData(options) end
+function CraftSimAPI:GetCraftSim() return CraftSim end  -- full internal table, if ever needed
+```
+
+`GetRecipeData` wraps the exact same constructor options documented below, so this only
+changes the entry point, not the options shape.
+
+### Correction 2: don't pass `orderData` -- SetOrder needs a real, submitted order
+
+The original plan (see "What didn't work" below) was to pass `orderData = { reagents = ... }`
+to the constructor and let `RecipeData:SetOrder()` apply it. Confirmed in-game this throws:
+
+```
+attempt to index global 'CraftSim' ...   -- (before Correction 1 was found)
+bad argument #3 to '?' (Usage: local info = C_TradeSkillUI.GetCraftingOperationInfoForOrder(
+    recipeID, craftingReagents, orderID, applyConcentration))
+```
+
+`RecipeData:SetOrder(orderData)` unconditionally calls
+`C_TradeSkillUI.GetCraftingOperationInfoForOrder(recipeID, {}, self.orderData.orderID, ...)`
+(`Classes/RecipeData.lua:412-413`). A draft order being created on
+`ProfessionsCustomerOrdersFrame` has no `orderID` yet -- that's only assigned after a server
+round-trip on submission -- so `self.orderData.orderID` is `nil` and the API rejects it. This
+path only works for an *already-submitted* order (which matches its doc comment: "guild/
+personal/work orders" -- all cases where a real order already exists).
+
+### The working alternative: SetReagentsByCraftingReagentInfoTbl
+
+```lua
+---@param craftingReagentInfoTbl CraftingReagentInfo[]
+function CraftSim.RecipeData:SetReagentsByCraftingReagentInfoTbl(craftingReagentInfoTbl)
     ...
+    self:SetOptionalReagents(optionalReagentIDs)
+    local reagentListItems = GUTIL:Map(requiredReagents, function(craftingReagentInfo)
+        return CraftSim.ReagentListItem(craftingReagentInfo.reagent.itemID, craftingReagentInfo.quantity,
+            craftingReagentInfo.reagent.currencyID)
+    end)
+    self:SetReagents(reagentListItems)
 end
-
--- Applies optional/finishing/required-selectable reagents from `orderData.reagents` to the
--- recipe's slots. This ensures queued orders always reflect customer-provided optionals
--- (guild/personal/work orders).
-function CraftSim.RecipeData:ApplyOrderReagentsToSlots() ... end
 ```
 
-(`Classes/RecipeData.lua:409-450`, doc comment CraftSim's own.)
+(`Classes/RecipeData.lua:494-520`.) This only touches reagent allocation -- no order object,
+no `GetCraftingOperationInfoForOrder` call. `SetReagents` (`RecipeData.lua:470-491`) walks
+`self.reagentData.requiredReagents`, and for each slot's possible item variants
+(`reagent.items`, keyed by the item's own itemID -- both a plain basic reagent and each
+quality rank of a ranked reagent live here, distinguished by `.hasQuality`), matches against
+the passed list by itemID and sets that specific item's quantity. Passing our chosen
+highest-quality itemID with its slot's `quantityRequired` allocates the full required amount
+to that specific rank, leaving the other ranks at zero -- which is exactly "pick the best
+rank, no partial-quality guesswork."
 
-If `orderData` is passed to the constructor (or `SetOrder` called after), CraftSim reads
-`orderData.reagents` -- Blizzard's own `CraftingOrderInfo.reagents` field, an array of
-`CraftingOrderReagentInfo` -- and applies it to the recipe's slots itself. This is already
-CraftSim's tested path for guild/personal/work orders per the comment above.
+`CraftSim.OPTIONAL_REAGENT_DATA` (`Data/OptionalReagentData.lua`, ~3450 lines) is a static
+list of known optional/finishing reagent itemIDs (things like enchant essences) used to route
+entries into `SetOptionalReagents` instead of `SetReagents`. Our modifying/quality-ranked
+itemIDs are a different category and shouldn't collide with it, though this hasn't been
+independently confirmed beyond "the in-game test didn't complain."
 
-**This means BestCraft may not need to hand-build reagent allocation data at all.** If
-`ProfessionsCustomerOrdersFrame.Form.order` is already populated with a `.reagents` array
-reflecting the best-quality picks before the order is submitted (unconfirmed -- see below),
-the entire integration could be:
+## What didn't work: the orderData/SetOrder path
 
-```lua
-local recipeData = CraftSim.RecipeData({ recipeID = recipeID, orderData = ProfessionsCustomerOrdersFrame.Form.order })
-CraftSim.CRAFTQ:AddRecipe({ recipeData = recipeData })
-```
+Kept for the record, so nobody re-tries this. The `RecipeData.ConstructorOptions` type does
+have an `orderData? CraftingOrderInfo` field, and `RecipeData:SetOrder()` /
+`ApplyOrderReagentsToSlots()` (`RecipeData.lua:409-463`) genuinely does apply
+`orderData.reagents` to a recipe's slots -- this is real, tested CraftSim code, just for a
+different situation (an order that already exists) than ours (a draft that doesn't exist yet).
+
+Also checked and ruled out along the way: `ProfessionsCustomerOrdersFrame.Form.order` exists
+as a table pre-submission, but its `.reagents` field is `nil` at that point -- confirmed
+in-game -- so there was never a "free" version of this path available for a draft order
+regardless of the `SetOrder` issue above.
 
 ## Still open
 
-- **Is `ProfessionsCustomerOrdersFrame.Form.order` populated with `.reagents` while still
-  drafting an order (pre-submission)?** This is the single fact that decides how much code
-  BestCraft actually needs to write. If yes, the two-line version above may just work. If no
-  (order objects might only get real content after a server round-trip on submission), BestCraft
-  needs to build a `CraftingOrderReagentInfo`-shaped array itself from
-  `transaction:GetAllocations()` / `slot.reagents` + `C_TradeSkillUI.GetItemReagentQualityByItemInfo`
-  (both already confirmed working, see `docs/order-screen-research.md`) and pass that as
-  `orderData.reagents` instead, still leaning on `ApplyOrderReagentsToSlots` to do the actual
-  application.
-- Exact shape of a single `CraftingOrderReagentInfo` entry (itemID/quantity/dataSlotIndex field
-  names) if BestCraft ends up building the array itself.
-- `ReagentData` internal shape confirmed by `ShoppingConverter/Resolver.lua:150-194` (its own
-  best-effort reverse-engineering of `CraftSim.CRAFTQ.craftQueue.craftQueueItems`, used to
-  recover itemID+quality when converting CraftSim's shopping list): `recipeData.reagentData`
-  has `.requiredReagents` (array, each with `.hasQuality` and `.items[qualityID].item`, an Item
-  object) and `:GetActiveOptionalReagents()` (method returning optional reagent entries, each
-  with `.item`). Not yet needed directly if `SetOrder` handles everything, but documented here
-  in case manual construction is required.
+- Whether `SetReagentsByCraftingReagentInfoTbl` is fully correct end-to-end (does the
+  resulting `recipeData` actually reflect the chosen reagents when queued via
+  `CraftSim.CRAFTQ:AddRecipe`?) -- needs an in-game check once that wiring exists.
+- Recraft orders specifically (issue #15): schematic shape was already confirmed to need no
+  special handling (see `docs/order-screen-research.md`), but this construction path hasn't
+  been tried against a real recraft order yet.
+- `ReagentData` internal shape as reverse-engineered by `ShoppingConverter/Resolver.lua:150-194`
+  (`recipeData.reagentData.requiredReagents[n].items[qualityID].item`,
+  `reagentData:GetActiveOptionalReagents()`) -- not needed directly given the above, but
+  documented here in case a future issue needs to read a RecipeData back out rather than
+  build one.

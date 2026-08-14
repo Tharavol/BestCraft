@@ -6,13 +6,14 @@ return function(stub, T)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
-                { dataSlotIndex = 1, required = true, reagents = { { itemID = 111 } } },
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
             },
         }
         local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected one entry")
-        T.AssertEqual(entries[1].reagent.itemID, 111, "expected the only option's itemID")
-        T.AssertEqual(entries[1].reagent.dataSlotIndex, 1, "expected dataSlotIndex to carry through")
+        T.AssertEqual(entries[1].itemID, 111, "expected the only option's itemID")
+        T.AssertEqual(entries[1].quantity, 20, "expected quantityRequired to carry through")
+        T.AssertEqual(entries[1].dataSlotIndex, 1, "expected dataSlotIndex to carry through")
         T.AssertTrue(entries[1].required, "expected required to carry through")
     end)
 
@@ -23,12 +24,16 @@ return function(stub, T)
         })
         local schematicInfo = {
             reagentSlotSchematics = {
-                { dataSlotIndex = 2, required = true, reagents = { { itemID = 201 }, { itemID = 202 } } },
+                {
+                    dataSlotIndex = 2, required = true, quantityRequired = 5,
+                    reagents = { { itemID = 201 }, { itemID = 202 } },
+                },
             },
         }
         local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected one entry")
-        T.AssertEqual(entries[1].reagent.itemID, 202, "expected the higher-quality itemID")
+        T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality itemID")
+        T.AssertEqual(entries[1].quantity, 5, "expected quantityRequired to carry through")
     end)
 
     T.Test("skips a multi-option slot when no option reports a quality tier", function()
@@ -50,7 +55,7 @@ return function(stub, T)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
-                { dataSlotIndex = 1, required = true, reagents = {} },
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = {} },
             },
         }
         local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
@@ -67,8 +72,14 @@ return function(stub, T)
         -- and the trailing optional slot with many same-quality (unranked) choices.
         local schematicInfo = {
             reagentSlotSchematics = {
-                { dataSlotIndex = 1, required = true, reagents = { { itemID = 245345 } } },
-                { dataSlotIndex = 1, required = true, reagents = { { itemID = 240974 }, { itemID = 240975 } } },
+                {
+                    dataSlotIndex = 1, required = true, quantityRequired = 20,
+                    reagents = { { itemID = 245345 } },
+                },
+                {
+                    dataSlotIndex = 1, required = true, quantityRequired = 5,
+                    reagents = { { itemID = 240974 }, { itemID = 240975 } },
+                },
                 {
                     dataSlotIndex = 6,
                     required = false,
@@ -81,7 +92,8 @@ return function(stub, T)
         }
         local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 2, "expected the basic and quality-ranked slots, not the optional one")
-        T.AssertEqual(entries[1].reagent.itemID, 245345, "expected the basic reagent's only option")
-        T.AssertEqual(entries[2].reagent.itemID, 240975, "expected the higher-quality rank")
+        T.AssertEqual(entries[1].itemID, 245345, "expected the basic reagent's only option")
+        T.AssertEqual(entries[2].itemID, 240975, "expected the higher-quality rank")
+        T.AssertEqual(entries[2].quantity, 5, "expected the quality slot's quantityRequired")
     end)
 end
