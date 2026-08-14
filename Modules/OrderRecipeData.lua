@@ -7,6 +7,11 @@
 -- choices itself -- see docs/craftsim-recipedata-notes.md for why that's CraftSim's own
 -- tested path for customer-provided order reagents, not something reimplemented here.
 --
+-- Goes through CraftSimAPI:GetRecipeData(), not CraftSim.RecipeData directly -- CraftSim's
+-- internal addon table is never published as a global (confirmed in-game: `CraftSim` reads
+-- as nil from another addon's context), only CraftSimAPI (Util/API.lua) is, and its
+-- GetRecipeData wraps the exact same constructor options.
+--
 -- Unlike OrderReagents.lua's slot-selection logic, this cannot be meaningfully unit tested
 -- without CraftSim's real classes loaded, so it leans on pcall the same way ShoppingConverter
 -- does around CraftSim internals it doesn't control: best-effort, fails closed to nil rather
@@ -20,7 +25,7 @@ local OrderScreen = ns.OrderScreen
 -- slots set to the highest-quality choice, or nil if CraftSim isn't ready, no order/recipe
 -- is currently loaded on the form, or construction fails for any reason.
 function OrderScreen:BuildRecipeData()
-    if not (CraftSim and CraftSim.RecipeData) then
+    if not (CraftSimAPI and CraftSimAPI.GetRecipeData) then
         return nil
     end
 
@@ -39,7 +44,7 @@ function OrderScreen:BuildRecipeData()
 
     local reagentEntries = self:GetBestQualityReagentEntries(schematicInfo)
 
-    local constructOk, recipeData = pcall(CraftSim.RecipeData, {
+    local constructOk, recipeData = pcall(CraftSimAPI.GetRecipeData, CraftSimAPI, {
         recipeID = recipeID,
         orderData = {
             reagents = reagentEntries,

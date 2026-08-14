@@ -14,7 +14,7 @@ ignore = {
 read_globals = {
     "C_AddOns",
     "C_TradeSkillUI",
-    "CraftSim",
+    "CraftSimAPI",
     "CreateFrame",
 
     -- Blizzard's load-on-demand Crafting Orders customer frame. See

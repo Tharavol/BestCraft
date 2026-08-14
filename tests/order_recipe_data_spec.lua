@@ -7,21 +7,21 @@
 -- See docs/craftsim-recipedata-notes.md; the happy path needs an in-game check instead.
 
 return function(stub, T)
-    T.Test("returns nil when CraftSim isn't loaded", function()
+    T.Test("returns nil when CraftSimAPI isn't available", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
-        T.AssertEqual(loaded.ns.OrderScreen:BuildRecipeData(), nil, "expected nil without CraftSim")
+        T.AssertEqual(loaded.ns.OrderScreen:BuildRecipeData(), nil, "expected nil without CraftSimAPI")
     end)
 
     T.Test("returns nil when the order screen's Form hasn't been found yet", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
-        loaded.env.CraftSim = { RecipeData = function() error("should not be called") end }
+        loaded.env.CraftSimAPI = { GetRecipeData = function() error("should not be called") end }
         T.AssertEqual(loaded.ns.OrderScreen.form, nil, "sanity check: no form yet")
         T.AssertEqual(loaded.ns.OrderScreen:BuildRecipeData(), nil, "expected nil without a Form")
     end)
 
     T.Test("returns nil when the transaction can't produce a recipeID", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
-        loaded.env.CraftSim = { RecipeData = function() error("should not be called") end }
+        loaded.env.CraftSimAPI = { GetRecipeData = function() error("should not be called") end }
         loaded.ns.OrderScreen.form = {
             transaction = {
                 GetRecipeID = function() return nil end,
