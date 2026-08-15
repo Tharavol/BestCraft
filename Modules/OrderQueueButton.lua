@@ -45,8 +45,8 @@ end
 
 local function RefreshRecraftState(button)
     button:SetText(RECRAFT_LABEL)
-    local entries = OrderScreen:GetRecraftShoppingEntries()
-    button:SetEnabled(entries ~= nil and #entries > 0 and OrderScreen:IsAuctionatorAvailable())
+    local entries, allRequiredResolved = OrderScreen:GetRecraftShoppingEntries()
+    button:SetEnabled(entries ~= nil and #entries > 0 and allRequiredResolved and OrderScreen:IsAuctionatorAvailable())
 end
 
 local function RefreshQueueState(button)
@@ -57,9 +57,9 @@ local function RefreshQueueState(button)
         return
     end
 
-    local recipeData = OrderScreen:BuildRecipeData()
+    local recipeData, allRequiredResolved = OrderScreen:BuildRecipeData()
     local queueableOk, queueable = pcall(craftQueue.IsRecipeQueueable, craftQueue, recipeData)
-    button:SetEnabled(recipeData ~= nil and queueableOk and queueable == true)
+    button:SetEnabled(recipeData ~= nil and allRequiredResolved and queueableOk and queueable == true)
 end
 
 local function RefreshButtonState(button)
@@ -83,9 +83,14 @@ local function OnClickQueue()
         return
     end
 
-    local recipeData = OrderScreen:BuildRecipeData()
+    local recipeData, allRequiredResolved = OrderScreen:BuildRecipeData()
     if not recipeData then
         print("|cffff4444BestCraft|r couldn't read this order's recipe.")
+        return
+    end
+    if not allRequiredResolved then
+        print("|cffff4444BestCraft|r couldn't resolve every required reagent for this order yet -- "
+            .. "try again once all slots have a selection.")
         return
     end
 

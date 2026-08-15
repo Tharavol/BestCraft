@@ -28,6 +28,12 @@ local OrderScreen = ns.OrderScreen
 -- Returns a CraftSim.RecipeData for the order screen's current recipe with its reagent
 -- slots set to the highest-quality choice, or nil if CraftSim isn't ready, no order/recipe
 -- is currently loaded on the form, or construction fails for any reason.
+---@return table? recipeData
+---@return boolean? allRequiredResolved False if a required reagent slot had no confident
+---   pick -- see OrderReagents.lua's GetBestQualityReagentEntries. The returned recipeData
+---   still reflects whatever slots *did* resolve; callers should treat it as incomplete
+---   rather than discard it outright, since the player may still want to see what's known.
+---   nil (not false) when recipeData itself is nil -- there's nothing to qualify.
 function OrderScreen:BuildRecipeData()
     if not (CraftSimAPI and CraftSimAPI.GetRecipeData) then
         return nil
@@ -54,7 +60,7 @@ function OrderScreen:BuildRecipeData()
         return nil
     end
 
-    local reagentEntries = self:GetBestQualityReagentEntries(schematicInfo)
+    local reagentEntries, allRequiredResolved = self:GetBestQualityReagentEntries(schematicInfo)
     local craftingReagentInfoTbl = {}
     for _, entry in ipairs(reagentEntries) do
         table.insert(craftingReagentInfoTbl, { reagent = { itemID = entry.itemID }, quantity = entry.quantity })
@@ -65,5 +71,5 @@ function OrderScreen:BuildRecipeData()
         return nil
     end
 
-    return recipeData
+    return recipeData, allRequiredResolved
 end

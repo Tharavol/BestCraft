@@ -5,6 +5,13 @@
 -- with no independent optimization -- see docs/order-screen-research.md and
 -- docs/craftsim-recipedata-notes.md for how this shape was confirmed in-game and cross
 -- referenced against CraftSim's own source.
+--
+-- Deliberately does not read `AllocateBestQualityCheckbox` or `transaction:GetAllocations()`
+-- at all: quality is picked directly from each slot's candidate list
+-- (C_TradeSkillUI.GetItemReagentQualityByItemInfo), independent of whatever the native
+-- checkbox is set to. BestCraft's whole purpose is handing back the highest-quality shopping
+-- list regardless of the order's own quality setting (see README's "Why"), so the checkbox
+-- being off doesn't change anything here -- there's no unresolved case to handle for it.
 
 local _, ns = ...
 
@@ -53,8 +60,17 @@ end
 -- SetReagentsByCraftingReagentInfoTbl, not the orderData/SetOrder path this shape was
 -- originally built for.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
+---@return table entries
+---@return boolean allRequiredResolved False if a *required* slot had no confident pick --
+---   e.g. an optional reagent's ranked choice was never touched by the player, or no
+---   candidate reports a quality tier yet. Skipping such a slot silently would hand back an
+---   incomplete recipeData/shopping list with no indication a required reagent is missing,
+---   so callers should refuse to act (rather than proceed) when this is false. Unresolved
+---   *optional* slots (required == false) don't affect this -- they're expected to be
+---   skippable.
 function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
     local entries = {}
+    local allRequiredResolved = true
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
         local itemID = PickBestReagent(slot)
         if itemID then
@@ -64,7 +80,9 @@ function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
                 dataSlotIndex = slot.dataSlotIndex,
                 required = slot.required,
             })
+        elseif slot.required then
+            allRequiredResolved = false
         end
     end
-    return entries
+    return entries, allRequiredResolved
 end

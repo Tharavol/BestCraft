@@ -62,6 +62,37 @@ return function(stub, T)
         T.AssertEqual(#entries, 0, "expected no entries")
     end)
 
+    T.Test("reports allRequiredResolved=false when a required slot has no confident pick", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+                {
+                    dataSlotIndex = 2, required = true, quantityRequired = 1,
+                    reagents = { { itemID = 301 }, { itemID = 302 } },
+                },
+            },
+        }
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected only the resolvable slot's entry")
+        T.AssertFalse(allRequiredResolved, "expected false -- a required slot had no confident pick")
+    end)
+
+    T.Test("reports allRequiredResolved=true when only an optional slot is unresolved", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+                {
+                    dataSlotIndex = 6, required = false,
+                    reagents = { { itemID = 301 }, { itemID = 302 } },
+                },
+            },
+        }
+        local _, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertTrue(allRequiredResolved, "expected true -- only an optional slot was unresolved")
+    end)
+
     T.Test("handles multiple slots together, matching the real order's shape", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { CraftSim = true },

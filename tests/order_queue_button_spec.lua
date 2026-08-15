@@ -16,12 +16,25 @@ local function BuildSchematic()
     }
 end
 
-local function BuildFakeForm(stub, isRecraft)
+-- A required slot with no confident pick (multiple options, none reporting a quality tier) --
+-- see issue #4: this must never silently produce a partial recipeData/shopping list.
+local function BuildUnresolvedSchematic()
+    return {
+        reagentSlotSchematics = {
+            {
+                dataSlotIndex = 1, required = true, quantityRequired = 1,
+                reagents = { { itemID = 301 }, { itemID = 302 } },
+            },
+        },
+    }
+end
+
+local function BuildFakeForm(stub, isRecraft, schematicFn)
     local form = stub.MakeFrame()
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.transaction = {
         GetRecipeID = function() return 12345 end,
-        GetRecipeSchematic = BuildSchematic,
+        GetRecipeSchematic = schematicFn or BuildSchematic,
         IsRecraft = function() return isRecraft == true end,
     }
     return form
@@ -234,5 +247,59 @@ return function(stub, T)
 
         T.AssertEqual(#createCalls, 1, "expected one shopping list created")
         T.AssertFalse(craftQueueTouched, "expected the CraftQueue path never touched for a recraft order")
+    end)
+
+    T.Test("disables the queue button when a required reagent has no confident pick", function()
+        local fakeForm = BuildFakeForm(stub, false, BuildUnresolvedSchematic)
+        local mockRecipeData
+        mockRecipeData = { isRecraft = false, SetReagentsByCraftingReagentInfoTbl = function() end }
+        local addRecipeCalls = {}
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            presetGlobals = {
+                ProfessionsCustomerOrdersFrame = { Form = fakeForm },
+                CraftSimAPI = {
+                    GetRecipeData = function() return mockRecipeData end,
+                    GetCraftSim = function()
+                        return {
+                            CRAFTQ = {
+                                IsRecipeQueueable = function() return true end,
+                                AddRecipe = function(_, options) table.insert(addRecipeCalls, options) end,
+                            },
+                        }
+                    end,
+                },
+            },
+        })
+
+        local button = loaded.frames[#loaded.frames]
+        T.AssertFalse(button:IsEnabled(),
+            "expected disabled despite a queueable recipe -- a required reagent is unresolved")
+
+        button:FireScript("OnClick")
+        T.AssertEqual(#addRecipeCalls, 0, "expected no AddRecipe call while a required reagent is unresolved")
+    end)
+
+    T.Test("disables the recraft button when a required reagent has no confident pick", function()
+        local fakeForm = BuildFakeForm(stub, true, BuildUnresolvedSchematic)
+        local createCalls = {}
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            itemNames = { [301] = "Option A", [302] = "Option B" },
+            presetGlobals = {
+                ProfessionsCustomerOrdersFrame = { Form = fakeForm },
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function(_, _, searchStrings) table.insert(createCalls, searchStrings) end,
+                } } },
+            },
+        })
+
+        local button = loaded.frames[#loaded.frames]
+        T.AssertFalse(button:IsEnabled(),
+            "expected disabled with Auctionator available -- a required reagent is unresolved")
+
+        button:FireScript("OnClick")
+        T.AssertEqual(#createCalls, 0, "expected no shopping list created while a required reagent is unresolved")
     end)
 end

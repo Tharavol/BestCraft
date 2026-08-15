@@ -57,6 +57,24 @@ return function(stub, T)
         T.AssertTrue(message ~= nil, "expected a message")
     end)
 
+    T.Test("CreateRecraftShoppingList fails with a message when a required reagent can't be resolved", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { CraftSim = true },
+            presetGlobals = { Auctionator = { API = { v1 = {} } } },
+        })
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 1, required = true, quantityRequired = 1,
+                    reagents = { { itemID = 301 }, { itemID = 302 } },
+                },
+            },
+        })
+        local ok, message = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        T.AssertFalse(ok, "expected failure")
+        T.AssertTrue(message ~= nil and message:find("required") ~= nil, "expected a required-reagent message")
+    end)
+
     T.Test("CreateRecraftShoppingList fails with a message when item names can't be resolved", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { CraftSim = true },

@@ -71,14 +71,44 @@ return function(stub, T)
             },
         }
 
-        local result = loaded.ns.OrderScreen:BuildRecipeData()
+        local result, allRequiredResolved = loaded.ns.OrderScreen:BuildRecipeData()
 
         T.AssertEqual(result, mockRecipeData, "expected the constructed RecipeData to be returned")
+        T.AssertTrue(allRequiredResolved, "expected true -- the only slot resolved")
         T.AssertEqual(getRecipeDataArgs.recipeID, 12345, "expected recipeID passed to GetRecipeData")
         T.AssertEqual(getRecipeDataArgs.orderData, nil, "expected no orderData -- see the RecipeData notes doc")
         T.AssertEqual(getRecipeDataArgs.isRecraft, false, "expected isRecraft passed through")
         T.AssertEqual(#setReagentsArgs, 1, "expected one reagent entry")
         T.AssertEqual(setReagentsArgs[1].reagent.itemID, 111, "expected itemID nested under .reagent")
         T.AssertEqual(setReagentsArgs[1].quantity, 20, "expected quantityRequired carried through")
+    end)
+
+    T.Test("reports allRequiredResolved=false when a required slot has no confident pick", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+
+        local mockRecipeData = { SetReagentsByCraftingReagentInfoTbl = function() end }
+        loaded.env.CraftSimAPI = { GetRecipeData = function() return mockRecipeData end }
+
+        loaded.ns.OrderScreen.form = {
+            transaction = {
+                GetRecipeID = function() return 12345 end,
+                GetRecipeSchematic = function()
+                    return {
+                        reagentSlotSchematics = {
+                            {
+                                dataSlotIndex = 1, required = true, quantityRequired = 1,
+                                reagents = { { itemID = 301 }, { itemID = 302 } },
+                            },
+                        },
+                    }
+                end,
+                IsRecraft = function() return false end,
+            },
+        }
+
+        local result, allRequiredResolved = loaded.ns.OrderScreen:BuildRecipeData()
+
+        T.AssertEqual(result, mockRecipeData, "expected the constructed RecipeData still returned")
+        T.AssertFalse(allRequiredResolved, "expected false -- the required slot had no confident pick")
     end)
 end

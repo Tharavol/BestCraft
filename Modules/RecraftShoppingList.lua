@@ -23,6 +23,9 @@ end
 -- Returns the highest-quality reagent entries for whatever recipe is currently on the order
 -- screen (recraft or not -- the schematic shape needs no special-casing here, see
 -- docs/order-screen-research.md), or nil if there's no order/recipe currently loaded.
+---@return table? entries
+---@return boolean? allRequiredResolved See OrderReagents.lua's GetBestQualityReagentEntries.
+---   nil (not false) when entries itself is nil -- there's nothing to qualify.
 function OrderScreen:GetRecraftShoppingEntries()
     local form = self.form
     local transaction = form and form.transaction
@@ -65,8 +68,15 @@ function OrderScreen:CreateRecraftShoppingList()
         return false, "Auctionator is required to build a shopping list for a recraft order."
     end
 
-    local entries = self:GetRecraftShoppingEntries()
-    if not entries or #entries == 0 then
+    local entries, allRequiredResolved = self:GetRecraftShoppingEntries()
+    if not entries then
+        return false, "No reagents to shop for on this order."
+    end
+    if not allRequiredResolved then
+        return false,
+            "Couldn't resolve every required reagent for this order yet -- try again once all slots have a selection."
+    end
+    if #entries == 0 then
         return false, "No reagents to shop for on this order."
     end
 

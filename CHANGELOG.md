@@ -18,4 +18,9 @@ All notable changes to the BestCraft addon are documented in this file.
   `CraftSim.CRAFTQ:IsRecipeQueueable` agrees; clicking calls `CraftSim.CRAFTQ:AddRecipe`
 - Recraft orders: since CraftSim's CraftQueue doesn't support recraft recipes at all, the
   button switches to "+ Shopping List" and builds an Auctionator shopping list directly via
-  `Auctionator.API.v1`, using the same highest-quality reagent selection
+  `Auctionator.API.v1`, using the same highest-quality reagent selection (#18)
+- Refuse to queue or build a shopping list when a required reagent slot has no confident
+  quality pick, instead of silently omitting it -- the button disables and clicking shows a
+  message rather than handing back an incomplete recipeData/shopping list (#4). The native
+  "Use Best Quality Reagents" checkbox itself needs no handling: BestCraft never reads it,
+  always computing quality directly from the schematic regardless of its state
