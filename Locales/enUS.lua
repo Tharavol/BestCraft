@@ -27,11 +27,40 @@ L.STATUS_NO_AUCTIONATOR = "Requires Auctionator to be installed and enabled."
 L.STATUS_UNRESOLVED_REQUIRED = "Couldn't resolve every required reagent for this order yet -- "
     .. "try again once all slots have a selection."
 L.STATUS_NO_REAGENTS = "No reagents to shop for on this order."
+L.STATUS_DISABLED_BY_OPTION = "Disabled in BestCraft's options (/bestcraft options)."
 
 L.ERROR_NO_AUCTIONATOR = "Auctionator is required to build a shopping list for this order."
 L.ERROR_UNRESOLVED_ITEM_NAMES = "Couldn't resolve item names for this order's reagents yet -- try again in a moment."
 L.ERROR_CREATE_FAILED = "Couldn't create the Auctionator shopping list."
 
 L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
+L.CORE_LOGIN_MESSAGE = "%s loaded. |cffaaaaaa/bestcraft|r for options."
 
 L.SHOPPING_LIST_NAME = "BestCraft"
+
+-- Issue #16: standardized slash commands / options panel, matching conventions from
+-- Crosshairs (slash command set, COMMANDS-table dispatch) and ShoppingConverter (login
+-- message toggle, Options.lua structure) -- see those repos' Core.lua/Commands.lua/Options.lua.
+L.OPTIONS_TITLE = "BestCraft"
+L.OPTIONS_BUTTON_ENABLED_LABEL = "Enable the order-screen shopping list button"
+L.OPTIONS_BUTTON_ENABLED_TOOLTIP = "Turns the \"+ Shopping List\" button on the Place Crafting Order "
+    .. "screen on or off. When off, the button stays visible but disabled, with a tooltip explaining why."
+L.OPTIONS_LOGIN_MESSAGE_LABEL = "Show a message at login"
+L.OPTIONS_LOGIN_MESSAGE_TOOLTIP = "Print the addon name and version to chat when you log in."
+
+L.CMD_HELP_OPTIONS = "/bestcraft, /bestcraft options, /bestcraft config, /bestcraft gui - "
+    .. "open the options panel"
+L.CMD_HELP_STATUS = "/bestcraft status - show current settings"
+L.CMD_HELP_VERSION = "/bestcraft version - show the addon version"
+L.CMD_HELP_RESET = "/bestcraft reset - restore settings to defaults"
+L.CMD_HELP_LOGIN = "/bestcraft login [on|off] - toggle the login version message"
+L.CMD_HELP_HELP = "/bestcraft help - show this list"
+L.CMD_UNKNOWN = "unknown command: %s"
+L.CMD_UNKNOWN_VALUE = "'%s' - expected 'on' or 'off'."
+L.CMD_SETTINGS_RESET = "Settings restored to defaults."
+L.CMD_COMMANDS_HEADER = "%s commands:"
+L.CMD_SETTINGS_HEADER = "%s settings:"
+L.CMD_SETTING_STATUS = "%s is %s."
+L.CMD_SETTING_ON = "|cff00ff00on|r"
+L.CMD_SETTING_OFF = "|cffff0000off|r"
+L.CMD_LOGIN_LABEL = "Login message"

@@ -52,30 +52,44 @@ local function MakeFrame()
     function f:IsShown() return self._shown end
     function f:SetEnabled(enabled) self._enabled = enabled and true or false end
     function f:IsEnabled() return self._enabled end
+    function f:SetChecked(checked) self._checked = checked and true or false end
+    function f:GetChecked() return self._checked end
+    -- Real CreateFontString/CreateTexture return region objects, not frames -- but every
+    -- method BestCraft's own code calls on one (SetPoint, SetText/GetText) is already here,
+    -- so a plain MakeFrame() stands in fine rather than a third near-identical stub type.
+    function f:CreateFontString(...) return MakeFrame() end
+    function f:CreateTexture(...) return MakeFrame() end
     return f
 end
 
 M.MakeFrame = MakeFrame
 
-local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
+local function NewEnv(opts)
+    opts = opts or {}
     local frames = {}
 
     local api = {
-        addonsLoaded = addonsLoaded or {},
+        addonsLoaded = opts.addonsLoaded or {},
         chatLog = {},
         -- itemID -> reagent quality tier (1-3), for GetItemReagentQualityByItemInfo. An
         -- itemID absent from this table returns nil, matching a reagent with no quality tier.
-        reagentQualities = reagentQualities or {},
+        reagentQualities = opts.reagentQualities or {},
         -- itemID -> item name, for C_Item.GetItemInfo. An itemID absent from this table
         -- returns nil, matching an item whose client-side info isn't cached/known yet.
-        itemNames = itemNames or {},
+        itemNames = opts.itemNames or {},
         -- itemID -> Enum.ItemBind value, for GetItemInfo's 14th return value (bindType). An
         -- itemID absent from this table returns nil, matching an item whose bind info isn't
         -- cached/known yet -- OrderReagents.lua's IsBindOnPickup fails open on that (not BoP).
-        itemBindTypes = itemBindTypes or {},
+        itemBindTypes = opts.itemBindTypes or {},
         -- Lines shown via GameTooltip_AddNormalLine/AddErrorLine since the last SetOwner,
         -- each { kind = "Normal"|"Error", text = string }, for specs to assert tooltip content.
         tooltipLines = {},
+        -- Fed to GetAddOnMetadata(_, "Version"); nil (the default) matches a dev install
+        -- where the packager never substituted @project-version@.
+        addonVersion = opts.addonVersion,
+        -- Every Settings.OpenToCategory call's categoryID, for specs asserting a slash
+        -- command or button actually opened the options panel.
+        openedCategoryIDs = {},
     }
 
     local env = setmetatable({}, { __index = _G })
@@ -84,14 +98,24 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
     -- access) writes into this test's isolated env instead of leaking into the real
     -- process-wide _G and bleeding into other tests.
     env._G = env
-    env.CreateFrame = function(...)
+    env.CreateFrame = function(frameType, ...)
         local f = MakeFrame()
+        -- Real CheckButton templates (InterfaceOptionsCheckButtonTemplate etc.) always
+        -- expose a .Text FontString region; Options.lua's checkboxes rely on it existing.
+        if frameType == "CheckButton" then
+            f.Text = MakeFrame()
+        end
         table.insert(frames, f)
         return f
     end
     env.C_AddOns = {
         IsAddOnLoaded = function(name) return api.addonsLoaded[name] == true end,
+        GetAddOnMetadata = function(_, field)
+            if field == "Version" then return api.addonVersion end
+            return nil
+        end,
     }
+    env.GetAddOnMetadata = env.C_AddOns.GetAddOnMetadata
     env.C_TradeSkillUI = {
         GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
     }
@@ -119,6 +143,21 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
         table.insert(api.tooltipLines, { kind = "Error", text = text })
     end
     env.GameTooltip_Hide = function() end
+    -- RegisterCanvasLayoutCategory returns an object with a stable :GetID() -- Options.lua
+    -- keeps that around to later call Settings.OpenToCategory(category:GetID()).
+    env.Settings = {
+        RegisterCanvasLayoutCategory = function(_, name)
+            local category = { _id = name }
+            function category:GetID() return self._id end
+            return category
+        end,
+        RegisterAddOnCategory = function() end,
+        OpenToCategory = function(categoryID) table.insert(api.openedCategoryIDs, categoryID) end,
+    }
+    -- Core.lua assigns SlashCmdList["BESTCRAFT"] at file-load time; this only needs to be a
+    -- table for that assignment not to error -- specs exercise Commands:Dispatch directly
+    -- rather than through this (Commands.lua never touches SlashCmdList itself).
+    env.SlashCmdList = {}
     -- Real values (Blizzard_APIDocumentationGenerated/ProfessionConstantsDocumentation.lua and
     -- ItemConstantsDocumentation.lua), not placeholders -- so e.g. a test's
     -- Enum.CraftingOrderType.Public matches the real client.
@@ -163,6 +202,19 @@ local function TocFileList(tocPath)
     return files
 end
 
+-- Fires an arbitrary event against every frame that registered for it, the way WoW would.
+local function FireEventOn(frames, event, ...)
+    for _, f in ipairs(frames) do
+        if f._events[event] and f._scripts and f._scripts.OnEvent then
+            f._scripts.OnEvent(f, event, ...)
+        end
+    end
+end
+
+local function FireAddonLoadedOn(frames, addonName)
+    FireEventOn(frames, "ADDON_LOADED", addonName)
+end
+
 -- Loads the addon fresh: a new stub environment and a new shared `ns` table, exactly
 -- like WoW handing each file the same addon table via `...`.
 -- opts.addonsLoaded: optional set ({ Auctionator = true }) fed to C_AddOns.IsAddOnLoaded.
@@ -174,9 +226,12 @@ end
 -- opts.itemNames: optional { [itemID] = name } fed to C_Item.GetItemInfo.
 -- opts.itemBindTypes: optional { [itemID] = Enum.ItemBind value } fed to C_Item.GetItemInfo's
 -- bindType return value.
+-- opts.addonVersion: optional string fed to GetAddOnMetadata(_, "Version").
+-- opts.skipAutoAddonLoaded: optional; when true, skips the auto-fire below entirely. Only
+-- core_spec.lua's own ADDON_LOADED-handling tests need this, to control firing order/addon
+-- name themselves; every other spec wants ns.db/ns.ready already resolved.
 function M.LoadAddon(rootDir, tocPath, opts)
-    local env, api, frames = NewEnv(opts and opts.addonsLoaded, opts and opts.reagentQualities,
-        opts and opts.itemNames, opts and opts.itemBindTypes)
+    local env, api, frames = NewEnv(opts)
     if opts and opts.presetGlobals then
         for k, v in pairs(opts.presetGlobals) do
             env[k] = v
@@ -188,17 +243,28 @@ function M.LoadAddon(rootDir, tocPath, opts)
         setfenv(chunk, env)
         chunk("BestCraft", ns)
     end
+    -- A real client fires ADDON_LOADED for an addon synchronously, right after its own files
+    -- finish executing -- Core.lua's DB init (ns.db) and Auctionator gate (ns.ready) both run
+    -- from that handler, so every other module that reads either (which is most of them, now
+    -- that issue #16 added settings) needs this to have already happened by the time
+    -- LoadAddon returns, the same as it would have in-game.
+    if not (opts and opts.skipAutoAddonLoaded) then
+        FireAddonLoadedOn(frames, "BestCraft")
+    end
     return { env = env, ns = ns, api = api, frames = frames }
 end
 
 -- Fires ADDON_LOADED for the given addon name against every frame that registered for it,
--- the way WoW would after any addon in the load order finishes loading.
+-- the way WoW would after any addon in the load order finishes loading. Used for addons
+-- *other* than BestCraft itself (e.g. Blizzard_ProfessionsCustomerOrders) -- BestCraft's own
+-- ADDON_LOADED already fired once, automatically, inside LoadAddon above.
 function M.FireAddonLoaded(loaded, addonName)
-    for _, f in ipairs(loaded.frames) do
-        if f._events.ADDON_LOADED and f._scripts and f._scripts.OnEvent then
-            f._scripts.OnEvent(f, "ADDON_LOADED", addonName)
-        end
-    end
+    FireAddonLoadedOn(loaded.frames, addonName)
+end
+
+-- Fires an arbitrary event (PLAYER_LOGIN, etc.) against every frame that registered for it.
+function M.FireEvent(loaded, event, ...)
+    FireEventOn(loaded.frames, event, ...)
 end
 
 return M

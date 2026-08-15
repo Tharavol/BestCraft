@@ -19,9 +19,13 @@ Copy the folder to your World of Warcraft installation:
 
 - Windows: `World of Warcraft\_retail_\Interface\AddOns\BestCraft`
 
+Configuration
+-------------
+`/bestcraft` (or `/bestcraft options`) opens the options panel -- two settings: enabling the order-screen button, and a login message. Other commands: `/bestcraft status`, `/bestcraft version`, `/bestcraft reset`, `/bestcraft login [on|off]`, `/bestcraft help`.
+
 Status
 ------
-Core feature working end-to-end (normal and recraft orders both, via a single Auctionator shopping list); polish (options panel, slash commands) still in progress. See [open issues](https://github.com/Tharavol/BestCraft/issues) and [milestones](https://github.com/Tharavol/BestCraft/milestones) for progress.
+Core feature working end-to-end (normal and recraft orders both, via a single Auctionator shopping list), plus an options panel and slash commands. See [open issues](https://github.com/Tharavol/BestCraft/issues) and [milestones](https://github.com/Tharavol/BestCraft/milestones) for progress.
 
 Credits
 -------

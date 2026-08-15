@@ -42,12 +42,23 @@ local _, ns = ...
 local OrderScreen = ns.OrderScreen
 local L = ns.L
 
--- The same three checks RefreshButtonState uses to gate SetEnabled, but returning *why* --
--- issue #8: this screen's other buttons all show a tooltip explaining themselves (see
+-- The same checks RefreshButtonState uses to gate SetEnabled, but returning *why* -- issue #8:
+-- this screen's other buttons all show a tooltip explaining themselves (see
 -- GameTooltip_AddNormalLine/AddErrorLine usage throughout Blizzard's own
 -- Blizzard_ProfessionsCustomerOrdersForm.lua), and this one didn't have one at all.
 ---@return string? reason nil when the button is/would be enabled
 local function GetDisabledReason()
+    -- issue #16: the options-panel/slash-command toggle to disable the button entirely.
+    -- Checked first since it's a deliberate user choice, not a transient state the other
+    -- reasons below describe. Guarded on ns.db existing at all -- if Blizzard_ProfessionsCustomerOrders
+    -- was already loaded by the time BestCraft's own files started executing, CreateButton
+    -- (via OnFormFound's eager callback) can run before Core.lua's own ADDON_LOADED handler
+    -- has, i.e. before ns.db exists. Falls through to the checks below rather than treating
+    -- "not yet known" as "user disabled it" -- matches ns.DEFAULT_SETTINGS.buttonEnabled = true.
+    if ns.db and not ns.db.settings.buttonEnabled then
+        return L.STATUS_DISABLED_BY_OPTION
+    end
+
     if not OrderScreen:IsAuctionatorAvailable() then
         return L.STATUS_NO_AUCTIONATOR
     end
@@ -71,7 +82,7 @@ end
 local function OnClick()
     local ok, message = OrderScreen:CreateShoppingList()
     if not ok then
-        print(L.CHAT_PREFIX .. message)
+        ns.Print(message)
     end
 end
 

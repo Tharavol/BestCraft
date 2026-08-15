@@ -11,6 +11,16 @@ ignore = {
     "212", -- unused argument
 }
 
+-- Matches Crosshairs'/ShoppingConverter's own .luacheckrc split (issue #16): SavedVariables
+-- DB name and SLASH_*/SlashCmdList are write-able globals, everything else is read-only.
+globals = {
+    -- SavedVariables declared in the .toc
+    "BestCraftDB",
+
+    "SLASH_BESTCRAFT1",
+    "SlashCmdList",
+}
+
 read_globals = {
     "C_AddOns",
     "C_Item",
@@ -21,7 +31,9 @@ read_globals = {
     "GameTooltip_AddErrorLine",
     "GameTooltip_AddNormalLine",
     "GameTooltip_Hide",
+    "GetAddOnMetadata",
     "hooksecurefunc",
+    "Settings",
 
     -- Blizzard's load-on-demand Crafting Orders customer frame. See
     -- docs/order-screen-research.md for how it was identified.

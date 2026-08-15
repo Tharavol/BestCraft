@@ -50,3 +50,11 @@ All notable changes to the BestCraft addon are documented in this file.
   future translation even though enUS is the only locale shipped for now (#9). Along the way,
   collapsed two pairs of near-duplicate literals that had been typed out separately in the
   tooltip and click-failure paths but were word-for-word identical
+- Add `/bestcraft` slash commands (`options`/`config`/`gui`, `status`, `version`, `reset`,
+  `login [on|off]`, `help`) and an options panel (enable/disable the order-screen button,
+  toggle a login version message), plus `BestCraftDB` saved variables -- matching Crosshairs'
+  and ShoppingConverter's own Commands/Options.lua conventions rather than inventing new ones
+  (#16). The button-enabled setting is checked defensively (`ns.db and not ...`, not just
+  `not ...`): if `Blizzard_ProfessionsCustomerOrders` is already loaded by the time BestCraft's
+  own files start executing, the order-screen button can be created before Core.lua's own
+  `ADDON_LOADED` handler (and thus `ns.db`) exists yet

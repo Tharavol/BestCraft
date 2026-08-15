@@ -11,6 +11,8 @@ local T = dofile("tests/test_helpers.lua")
 local stub = dofile("tests/stub_api.lua")
 
 dofile("tests/core_spec.lua")(stub, T)
+dofile("tests/options_spec.lua")(stub, T)
+dofile("tests/commands_spec.lua")(stub, T)
 dofile("tests/order_screen_spec.lua")(stub, T)
 dofile("tests/order_reagents_spec.lua")(stub, T)
 dofile("tests/order_shopping_list_spec.lua")(stub, T)
