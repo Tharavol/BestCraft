@@ -22,6 +22,7 @@ return function(stub, T)
         T.AssertTrue(loaded.ns.db ~= nil, "expected ns.db to be set even without Auctionator")
         T.AssertTrue(loaded.ns.db.settings.buttonEnabled, "expected the buttonEnabled default")
         T.AssertFalse(loaded.ns.db.settings.printOnLogin, "expected the printOnLogin default")
+        T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected the maxQualityEnabled default")
     end)
 
     T.Test("ignores ADDON_LOADED events for other addons", function()
@@ -59,11 +60,13 @@ return function(stub, T)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
         loaded.ns.db.settings.buttonEnabled = false
         loaded.ns.db.settings.printOnLogin = true
+        loaded.ns.db.settings.maxQualityEnabled = false
 
         loaded.ns.ResetToDefaults()
 
         T.AssertTrue(loaded.ns.db.settings.buttonEnabled, "expected buttonEnabled reset to its default")
         T.AssertFalse(loaded.ns.db.settings.printOnLogin, "expected printOnLogin reset to its default")
+        T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected maxQualityEnabled reset to its default")
     end)
 
     T.Test("prints a login message only when ready and printOnLogin is set", function()

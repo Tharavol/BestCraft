@@ -78,6 +78,11 @@ local COMMANDS = {
         handler = function(_, rest) Toggle("printOnLogin", rest, L.CMD_LOGIN_LABEL, true) end,
     },
     {
+        name = "maxquality",
+        help = { L.CMD_HELP_MAXQUALITY },
+        handler = function(_, rest) Toggle("maxQualityEnabled", rest, L.CMD_MAXQUALITY_LABEL, true) end,
+    },
+    {
         name = "help",
         help = { L.CMD_HELP_HELP },
         handler = function() PrintUsage() end,

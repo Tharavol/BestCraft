@@ -21,7 +21,7 @@ Copy the folder to your World of Warcraft installation:
 
 Configuration
 -------------
-`/bestcraft` (or `/bestcraft options`) opens the options panel -- two settings: enabling the order-screen button, and a login message. Other commands: `/bestcraft status`, `/bestcraft version`, `/bestcraft reset`, `/bestcraft login [on|off]`, `/bestcraft help`.
+`/bestcraft` (or `/bestcraft options`) opens the options panel -- three settings: enabling the order-screen button, a login message, and automatically defaulting the order's Minimum Quality to maximum. Other commands: `/bestcraft status`, `/bestcraft version`, `/bestcraft reset`, `/bestcraft login [on|off]`, `/bestcraft maxquality [on|off]`, `/bestcraft help`.
 
 Status
 ------

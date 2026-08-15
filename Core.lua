@@ -57,6 +57,9 @@ ns.DEFAULT_SETTINGS = {
     -- Off by default: unsolicited login spam is the most common complaint about small addons
     -- (matches ShoppingConverter's own reasoning and default for the same setting).
     printOnLogin = false,
+    -- On by default: matches issue #17's original behavior (always applied) before this
+    -- became optional.
+    maxQualityEnabled = true,
 }
 
 local function InitializeDB()

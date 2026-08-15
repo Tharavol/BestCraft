@@ -27,6 +27,11 @@ local CHECKBOXES = {
         label = L.OPTIONS_LOGIN_MESSAGE_LABEL,
         tooltip = L.OPTIONS_LOGIN_MESSAGE_TOOLTIP,
     },
+    {
+        key = "maxQualityEnabled",
+        label = L.OPTIONS_MAX_QUALITY_LABEL,
+        tooltip = L.OPTIONS_MAX_QUALITY_TOOLTIP,
+    },
 }
 Options.CHECKBOXES = CHECKBOXES
 

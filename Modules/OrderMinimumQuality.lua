@@ -60,6 +60,18 @@ local lastAppliedSpellIDByOrder = setmetatable({}, { __mode = "k" })
 -- Exposed on OrderScreen (rather than kept local-only) so tests can call it directly against
 -- a hand-built fake form, the same pattern as the rest of this addon's testable logic.
 function OrderScreen:ApplyDefaultMinimumQuality()
+    -- Guarded on ns.db existing at all, not just the setting -- same reasoning as
+    -- OrderShoppingButton.lua's buttonEnabled check: if Blizzard_ProfessionsCustomerOrders was
+    -- already loaded by the time BestCraft's own files started executing, this can run (via
+    -- OnFormFound's eager callback) before Core.lua's own ADDON_LOADED handler -- and thus
+    -- ns.db -- exists yet. Falls through rather than treating "not yet known" as "disabled",
+    -- matching ns.DEFAULT_SETTINGS.maxQualityEnabled = true. Checked before touching
+    -- lastAppliedSpellIDByOrder below, so re-enabling mid-draft can still apply on the very
+    -- next refresh rather than being permanently skipped for a recipe seen while disabled.
+    if ns.db and not ns.db.settings.maxQualityEnabled then
+        return
+    end
+
     local form = self.form
     local order = form and form.order
     if not order or form.committed then

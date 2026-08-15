@@ -58,3 +58,9 @@ All notable changes to the BestCraft addon are documented in this file.
   `not ...`): if `Blizzard_ProfessionsCustomerOrders` is already loaded by the time BestCraft's
   own files start executing, the order-screen button can be created before Core.lua's own
   `ADDON_LOADED` handler (and thus `ns.db`) exists yet
+- Add a third setting/checkbox/`/bestcraft maxquality [on|off]` command to turn off
+  automatically defaulting the order's Minimum Quality to maximum (issue #17's feature) --
+  on by default, matching that feature's original always-on behavior before this became
+  optional. Same defensive `ns.db and not ...` guard as buttonEnabled, for the same
+  load-order reason, and checked before touching the per-recipe "already applied" tracking so
+  re-enabling mid-draft doesn't leave a recipe permanently skipped

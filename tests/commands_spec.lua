@@ -68,6 +68,27 @@ return function(stub, T)
         T.AssertFalse(loaded.ns.db.settings.printOnLogin, "expected the second bare toggle to flip it back off")
     end)
 
+    T.Test("maxquality on/off sets maxQualityEnabled explicitly", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+
+        loaded.ns.Commands:Dispatch("maxquality off")
+        T.AssertFalse(loaded.ns.db.settings.maxQualityEnabled, "expected 'maxquality off' to set it false")
+
+        loaded.ns.Commands:Dispatch("maxquality on")
+        T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected 'maxquality on' to set it true")
+    end)
+
+    T.Test("bare maxquality toggles the current state", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "sanity: starts true")
+
+        loaded.ns.Commands:Dispatch("maxquality")
+        T.AssertFalse(loaded.ns.db.settings.maxQualityEnabled, "expected the first bare toggle to flip it off")
+
+        loaded.ns.Commands:Dispatch("maxquality")
+        T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected the second bare toggle to flip it back on")
+    end)
+
     T.Test("login with an unrecognized value is rejected, not silently ignored", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
         local before = loaded.ns.db.settings.printOnLogin

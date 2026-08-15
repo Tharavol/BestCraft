@@ -11,11 +11,12 @@ local function FindCheckbox(loaded, key)
 end
 
 return function(stub, T)
-    T.Test("registers exactly the two documented checkboxes", function()
+    T.Test("registers exactly the three documented checkboxes", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
-        T.AssertEqual(#loaded.ns.Options.CHECKBOXES, 2, "expected exactly two settings")
+        T.AssertEqual(#loaded.ns.Options.CHECKBOXES, 3, "expected exactly three settings")
         T.AssertTrue(FindCheckbox(loaded, "buttonEnabled") ~= nil, "expected a buttonEnabled checkbox")
         T.AssertTrue(FindCheckbox(loaded, "printOnLogin") ~= nil, "expected a printOnLogin checkbox")
+        T.AssertTrue(FindCheckbox(loaded, "maxQualityEnabled") ~= nil, "expected a maxQualityEnabled checkbox")
     end)
 
     T.Test("Open opens the registered category", function()

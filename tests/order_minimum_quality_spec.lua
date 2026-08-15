@@ -144,6 +144,38 @@ return function(stub, T)
         T.AssertEqual(#setCalls, 0, "expected no call -- the order already has a non-None minQuality")
     end)
 
+    T.Test("does nothing when maxQualityEnabled is turned off", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        loaded.ns.db.settings.maxQualityEnabled = false
+        local setCalls = {}
+        local form = BuildForm(stub)
+        form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
+        loaded.ns.OrderScreen.form = form
+
+        loaded.ns.OrderScreen:ApplyDefaultMinimumQuality()
+
+        T.AssertEqual(#setCalls, 0, "expected no call -- the setting is off")
+    end)
+
+    T.Test("re-applies once maxQualityEnabled is turned back on mid-draft", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        loaded.ns.db.settings.maxQualityEnabled = false
+        local setCalls = {}
+        local form = BuildForm(stub)
+        form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
+        loaded.ns.OrderScreen.form = form
+
+        loaded.ns.OrderScreen:ApplyDefaultMinimumQuality()
+        T.AssertEqual(#setCalls, 0, "expected no call while off")
+
+        -- Not permanently skipped for this recipe: turning it back on and refreshing (the
+        -- same recipe, same draft) still applies, since the disabled check returns before
+        -- lastAppliedSpellIDByOrder is ever touched.
+        loaded.ns.db.settings.maxQualityEnabled = true
+        loaded.ns.OrderScreen:ApplyDefaultMinimumQuality()
+        T.AssertEqual(#setCalls, 1, "expected one call once re-enabled")
+    end)
+
     T.Test("SetupMinimumQualityDefault applies once when the Form is found", function()
         local fakeForm = stub.MakeFrame()
         fakeForm.order = { spellID = 111, orderType = CraftingOrderType.Guild, minQuality = 1 }
