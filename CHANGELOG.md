@@ -30,9 +30,11 @@ All notable changes to the BestCraft addon are documented in this file.
   once per recipe per draft so a manual change back to None isn't re-stomped by a
   reagent-only refresh (#17). Public orders are deliberately left alone -- Blizzard hides the
   dropdown for them and always submits `minCraftingQualityID = 0` regardless
-- Skip any reagent slot sourced from the crafter (`reagentSlotSchematic.orderSource ==
-  Enum.CraftingOrderReagentSource.Crafter`) entirely, rather than including it on the
-  shopping list -- confirmed in-game that such reagents (shown in red on the order screen,
-  e.g. a non-tradable crafting catalyst) can't be bought on the auction house at all, since
-  they're the crafter's own personal-supply materials, not something the customer placing
-  the order is meant to source
+- Exclude two kinds of reagent that can never actually be bought, rather than putting them on
+  the shopping list: slots sourced from the crafter (`reagentSlotSchematic.orderSource ==
+  Enum.CraftingOrderReagentSource.Crafter` -- the crafter's own personal-supply materials, not
+  the customer's to provide), and bind-on-pickup items regardless of who's meant to supply
+  them (`C_Item.GetItemInfo`'s 14th return value == `Enum.ItemBind.OnAcquire`). Confirmed
+  in-game against a real order: "Fused Vitality" was Customer-sourced (so the orderSource
+  check alone missed it) but returned zero Auctionator search results -- it's simply BoP.
+  Neither exclusion blocks the button/shopping list over what remains resolvable

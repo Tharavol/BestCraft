@@ -1,10 +1,11 @@
 -- order_reagents_spec.lua
 -- SPDX-License-Identifier: MIT
 
--- Mirrors stub_api.lua's env.Enum.CraftingOrderReagentSource -- this file runs outside the
--- addon's sandboxed environment, so it needs its own copy rather than reading the addon's
--- global.
+-- Mirrors stub_api.lua's env.Enum.CraftingOrderReagentSource / env.Enum.ItemBind -- this file
+-- runs outside the addon's sandboxed environment, so it needs its own copy rather than
+-- reading the addon's global.
 local CraftingOrderReagentSource = { Any = 0, Customer = 1, Crafter = 2, None = 3 }
+local ItemBind = { None = 0, OnAcquire = 1, OnEquip = 2, OnUse = 3, Quest = 4 }
 
 return function(stub, T)
     T.Test("includes a single-option slot without needing quality data", function()
@@ -170,5 +171,39 @@ return function(stub, T)
         }
         local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 2, "expected both Customer- and Any-sourced slots included")
+    end)
+
+    T.Test("excludes a bind-on-pickup reagent even when Customer-sourced and required", function()
+        -- Matches the real bug: "Fused Vitality" had orderSource == Customer (not Crafter),
+        -- so only a bindType check catches it -- confirmed in-game via zero Auctionator
+        -- search results despite the order screen listing it as required.
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemBindTypes = { [111] = ItemBind.OnAcquire },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 1, required = true, quantityRequired = 20,
+                    orderSource = CraftingOrderReagentSource.Customer,
+                    reagents = { { itemID = 111 } },
+                },
+            },
+        }
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected the BoP reagent excluded")
+        T.AssertTrue(allRequiredResolved,
+            "expected true -- a BoP reagent was never purchasable, so it's not an unresolved pick")
+    end)
+
+    T.Test("includes a reagent whose bind type isn't cached yet (fails open, not BoP)", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected the reagent included -- unknown bind status isn't treated as BoP")
     end)
 end

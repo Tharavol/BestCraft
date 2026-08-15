@@ -57,7 +57,7 @@ end
 
 M.MakeFrame = MakeFrame
 
-local function NewEnv(addonsLoaded, reagentQualities, itemNames)
+local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
     local frames = {}
 
     local api = {
@@ -69,6 +69,10 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames)
         -- itemID -> item name, for C_Item.GetItemInfo. An itemID absent from this table
         -- returns nil, matching an item whose client-side info isn't cached/known yet.
         itemNames = itemNames or {},
+        -- itemID -> Enum.ItemBind value, for GetItemInfo's 14th return value (bindType). An
+        -- itemID absent from this table returns nil, matching an item whose bind info isn't
+        -- cached/known yet -- OrderReagents.lua's IsBindOnPickup fails open on that (not BoP).
+        itemBindTypes = itemBindTypes or {},
     }
 
     local env = setmetatable({}, { __index = _G })
@@ -89,13 +93,23 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames)
         GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
     }
     env.C_Item = {
-        GetItemInfo = function(itemID) return api.itemNames[itemID] end,
+        -- Real GetItemInfo returns 18 values (Blizzard_APIDocumentationGenerated/
+        -- ItemDocumentation.lua); only itemName (1st) and bindType (14th) are anything this
+        -- addon reads, so the rest are left nil rather than faked in full.
+        GetItemInfo = function(itemID)
+            -- Indexed explicitly (not a hand-counted run of nils) so bindType's position can't
+            -- silently drift off 14 -- it did once already while writing this stub.
+            local values = { [1] = api.itemNames[itemID], [14] = api.itemBindTypes[itemID] }
+            return unpack(values, 1, 14)
+        end,
     }
-    -- Real values (Blizzard_APIDocumentationGenerated/ProfessionConstantsDocumentation.lua),
-    -- not placeholders -- so a test's Enum.CraftingOrderType.Public matches the real client.
+    -- Real values (Blizzard_APIDocumentationGenerated/ProfessionConstantsDocumentation.lua and
+    -- ItemConstantsDocumentation.lua), not placeholders -- so e.g. a test's
+    -- Enum.CraftingOrderType.Public matches the real client.
     env.Enum = {
         CraftingOrderType = { Public = 0, Guild = 1, Personal = 2, Npc = 3 },
         CraftingOrderReagentSource = { Any = 0, Customer = 1, Crafter = 2, None = 3 },
+        ItemBind = { None = 0, OnAcquire = 1, OnEquip = 2, OnUse = 3, Quest = 4 },
     }
     -- Table+methodName variant only -- the addon never hooks a bare global function.
     env.hooksecurefunc = function(tbl, name, hookFn)
@@ -142,9 +156,11 @@ end
 -- opts.reagentQualities: optional { [itemID] = qualityTier } fed to
 -- C_TradeSkillUI.GetItemReagentQualityByItemInfo.
 -- opts.itemNames: optional { [itemID] = name } fed to C_Item.GetItemInfo.
+-- opts.itemBindTypes: optional { [itemID] = Enum.ItemBind value } fed to C_Item.GetItemInfo's
+-- bindType return value.
 function M.LoadAddon(rootDir, tocPath, opts)
     local env, api, frames = NewEnv(opts and opts.addonsLoaded, opts and opts.reagentQualities,
-        opts and opts.itemNames)
+        opts and opts.itemNames, opts and opts.itemBindTypes)
     if opts and opts.presetGlobals then
         for k, v in pairs(opts.presetGlobals) do
             env[k] = v

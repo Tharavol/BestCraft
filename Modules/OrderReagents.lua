@@ -53,25 +53,40 @@ local function PickBestReagent(slot)
     return nil
 end
 
+-- Bind-on-pickup items can never be sold on the auction house, full stop -- confirmed in-game
+-- against a real order: a required, Customer-sourced reagent ("Fused Vitality", orderSource ==
+-- Enum.CraftingOrderReagentSource.Customer, so NOT caught by the orderSource check below)
+-- still returned zero Auctionator search results, because the item itself is BoP. bindType is
+-- C_Item.GetItemInfo's 14th return value (Blizzard_APIDocumentationGenerated/
+-- ItemDocumentation.lua); MayReturnNothing == true for uncached items, in which case this
+-- returns nil and fails open (not excluded) -- an occasional un-filtered BoP item if data
+-- hasn't loaded yet is the same failure mode as today, not a regression, whereas excluding on
+-- unknown status risks dropping a legitimately purchasable reagent whose info just hasn't
+-- cached yet.
+local function IsBindOnPickup(itemID)
+    local bindType = select(14, C_Item.GetItemInfo(itemID))
+    return bindType == Enum.ItemBind.OnAcquire
+end
+
 -- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
 -- schematic's reagent slots, choosing the highest-quality item per slot and its full
 -- required quantity. Slots with no confident choice are omitted, not guessed.
 -- OrderShoppingList.lua reshapes this into Auctionator search strings.
 --
--- Skips any slot whose orderSource is Enum.CraftingOrderReagentSource.Crafter entirely --
--- confirmed in-game (a real order) that such slots exist and are shown in red on the order
--- screen. Blizzard's own client source explains why: these are reagents the *crafter* must
--- personally provide (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT), not something the customer
--- placing the order can supply -- typically a non-tradable/BoP catalyst reagent, which is
--- exactly why it can't be bought on the auction house. Putting one on a shopping list the
--- customer would use to buy things for the crafter is simply wrong, not just unhelpful.
--- Customer- and Any-sourced slots are unaffected; only Crafter-sourced ones are skipped, and
--- skipping one doesn't count against allRequiredResolved -- it was never the customer's to
--- resolve in the first place, unlike a genuinely-unresolved quality pick.
+-- Two separate reasons a slot can be excluded, both confirmed in-game against real orders:
+-- 1. orderSource == Enum.CraftingOrderReagentSource.Crafter -- Blizzard's own client source
+--    (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT) says these are reagents the *crafter* must
+--    personally provide, not something the customer placing the order is meant to supply.
+-- 2. The resolved item is bind-on-pickup (see IsBindOnPickup) -- can't be bought regardless of
+--    who's meant to provide it, Customer-sourced or not (this is what actually caught "Fused
+--    Vitality"; its orderSource was Customer, not Crafter, so #1 alone didn't cover it).
+-- Neither kind of exclusion counts against allRequiredResolved below -- neither was ever
+-- something the customer's shopping list could resolve in the first place, unlike a genuinely
+-- unresolved quality pick.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
 ---@return table entries
----@return boolean allRequiredResolved False if a *required*, customer-sourced slot had no
----   confident pick -- e.g. an optional reagent's ranked choice was never touched by the
+---@return boolean allRequiredResolved False if a *required*, purchasable-in-principle slot had
+---   no confident pick -- e.g. an optional reagent's ranked choice was never touched by the
 ---   player, or no candidate reports a quality tier yet. Skipping such a slot silently would
 ---   hand back an incomplete shopping list with no indication a required reagent is missing,
 ---   so callers should refuse to act (rather than proceed) when this is false. Unresolved
@@ -83,14 +98,14 @@ function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
         if slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
             local itemID = PickBestReagent(slot)
-            if itemID then
+            if itemID and not IsBindOnPickup(itemID) then
                 table.insert(entries, {
                     itemID = itemID,
                     quantity = slot.quantityRequired,
                     dataSlotIndex = slot.dataSlotIndex,
                     required = slot.required,
                 })
-            elseif slot.required then
+            elseif slot.required and not itemID then
                 allRequiredResolved = false
             end
         end
