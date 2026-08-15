@@ -1,14 +1,23 @@
 -- OrderQueueButton.lua
 -- SPDX-License-Identifier: MIT
 --
--- Adds a button to the order screen, anchored to the right of Form.TrackRecipeCheckbox (see
--- docs/order-screen-research.md for why this screen has its own TrackRecipeCheckbox to anchor
--- to). Originally anchored to its *left*, mirroring how CraftSim anchors its own equivalent
--- button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:2106-2118) -- but on
--- this screen TrackRecipeCheckbox sits flush against the window's own left edge, so that
--- pushed the button off the visible window entirely (issue #18's in-game recon caught this:
--- the button existed, IsShown() was true, but it was rendering out past the window, over the
--- unit frame). Anchoring to the right instead keeps it within the window's own bounds.
+-- Adds a button to the order screen, anchored above Form.AllocateBestQualityCheckbox (the
+-- native "Use Best Quality Reagents" checkbox -- see docs/order-screen-research.md). That
+-- spot stays empty regardless of how many reagent slots a recipe has (confirmed across
+-- several in-game recipes with differing reagent counts, all showing the same clear gap
+-- above it), which two earlier anchor attempts didn't have:
+--
+-- 1. Originally anchored to TrackRecipeCheckbox's *left*, mirroring how CraftSim anchors its
+--    own equivalent button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:
+--    2106-2118) -- but on this screen TrackRecipeCheckbox sits flush against the window's own
+--    left edge, so that pushed the button off the visible window entirely (issue #18's
+--    in-game recon caught this: the button existed, IsShown() was true, but it was rendering
+--    out past the window, over the unit frame).
+-- 2. Tried TrackRecipeCheckbox's *right* instead -- back on-window, but a third-party addon
+--    (Profession Shopping List) draws its own wider Track/Untrack buttons over the native
+--    checkbox, extending further right than the native frame's own bounds account for, so a
+--    fixed offset from the native widget still collided with whatever else happens to share
+--    that toolbar row for a given user's addon setup.
 --
 -- Two modes, chosen per order:
 -- - Normal orders: "+ CraftQueue", reaches CraftSim.CRAFTQ through CraftSimAPI:GetCraftSim()
@@ -119,7 +128,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("LEFT", form.TrackRecipeCheckbox, "RIGHT", 18, 0)
+    button:SetPoint("BOTTOMLEFT", form.AllocateBestQualityCheckbox, "TOPLEFT", 0, 8)
     button:SetText(QUEUE_LABEL)
     button:SetScript("OnClick", OnClick)
 
