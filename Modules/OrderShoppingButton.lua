@@ -8,11 +8,19 @@
 -- wanted, so the CraftQueue path was retired even though it worked (confirmed in-game, issue
 -- #18). See docs/craftsim-recipedata-notes.md for the retired approach, kept for the record.
 --
--- Anchored below Form.PaymentContainer.ListOrderButton (the "Place Order" submit button --
--- see docs/order-screen-research.md), the same way Blizzard's own "Core Alloy" specialization
--- button sits below the left panel's currency row: a fixed, uncrowded spot in the panel's own
--- empty margin rather than squeezed into a toolbar row shared with other addons. Two earlier
--- anchor attempts learned that the hard way:
+-- Anchored to the bottom-right corner of ProfessionsCustomerOrdersFrame itself (the whole
+-- window, not .Form), mirroring exactly how the Profession Shopping List addon anchors its own
+-- "Core Alloy" quick-reorder button -- confirmed by reading that addon's actual source
+-- (Slackluster/ProfessionShoppingList, modules-old/CraftingOrders.lua, still genuinely loaded
+-- despite the folder name -- checked its own .toc):
+--
+--   app.RepeatQuickOrderButton = app:MakeButton(ProfessionsCustomerOrdersFrame, "")
+--   app.RepeatQuickOrderButton:SetPoint("BOTTOMLEFT", ProfessionsCustomerOrdersFrame, 170, 5)
+--
+-- Three earlier anchor attempts all measured against *that* button's on-screen position
+-- (visually, via screenshots) while anchoring to something else entirely -- there was never a
+-- stable geometric relationship between those targets and where Core Alloy actually sits, so
+-- no fixed offset could converge:
 --
 -- 1. Originally anchored to TrackRecipeCheckbox's *left*, mirroring how CraftSim anchors its
 --    own equivalent button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:
@@ -20,13 +28,14 @@
 --    left edge, so that pushed the button off the visible window entirely (issue #18's
 --    in-game recon caught this: the button existed, IsShown() was true, but it was rendering
 --    out past the window, over the unit frame).
--- 2. Tried TrackRecipeCheckbox's *right* instead -- back on-window, but a third-party addon
---    (Profession Shopping List) draws its own wider Track/Untrack buttons over the native
---    checkbox, extending further right than the native frame's own bounds account for, so a
---    fixed offset from the native widget still collided with whatever else happens to share
---    that toolbar row for a given user's addon setup.
--- 3. Tried above Form.AllocateBestQualityCheckbox instead -- worked, no collisions, but
---    pushed into the reagent-list panel's own content area rather than sitting apart from it.
+-- 2. Tried TrackRecipeCheckbox's *right* instead -- back on-window, but Profession Shopping
+--    List draws its own wider Track/Untrack buttons over the native checkbox, extending
+--    further right than the native frame's own bounds account for, so a fixed offset from the
+--    native widget still collided with whatever else happens to share that toolbar row.
+-- 3. Tried above Form.AllocateBestQualityCheckbox, then below Form.PaymentContainer.ListOrderButton
+--    -- both stayed on-window with no collisions, but repeated pixel nudges against a
+--    screenshot of Core Alloy never quite converged, because Core Alloy's own anchor was never
+--    related to either of those elements to begin with.
 
 local _, ns = ...
 
@@ -50,7 +59,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -28)
+    button:SetPoint("BOTTOMRIGHT", ProfessionsCustomerOrdersFrame, -20, 5)
     button:SetText(BUTTON_LABEL)
     button:SetScript("OnClick", OnClick)
 

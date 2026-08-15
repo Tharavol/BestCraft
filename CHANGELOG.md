@@ -10,8 +10,11 @@ All notable changes to the BestCraft addon are documented in this file.
 - Pick the highest-quality reagent per slot from the order's recipe schematic, with no
   independent optimization -- ambiguous slots (multiple choices, no quality tier) are left
   alone rather than guessed at (#2)
-- Add a "+ Shopping List" button to the order screen, below `Form.PaymentContainer.ListOrderButton`
-  (three earlier anchor points collided with other addons or the window's own edge -- see
+- Add a "+ Shopping List" button to the order screen, anchored to the bottom-right of
+  `ProfessionsCustomerOrdersFrame` itself -- mirroring exactly how the Profession Shopping
+  List addon anchors its own "Core Alloy" quick-reorder button, confirmed by reading that
+  addon's actual source (three earlier anchor points measured pixels against a screenshot of
+  that button while anchoring to something else entirely, so nothing converged -- see
   `Modules/OrderShoppingButton.lua`'s header comment for the full trail). Builds an
   Auctionator shopping list via `Auctionator.API.v1`, for every order -- recraft or not (#18).
   Earlier versions split this into two modes: normal orders queued into `CraftSim.CRAFTQ`

@@ -31,7 +31,6 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
     local form = stub.MakeFrame()
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.AllocateBestQualityCheckbox = stub.MakeFrame()
-    form.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
     form.order = { isRecraft = isRecraft == true }
     form.transaction = {
         GetRecipeID = function() return 12345 end,
@@ -54,25 +53,28 @@ local function AuctionatorGlobal(createCalls)
 end
 
 return function(stub, T)
-    T.Test("creates a button anchored below the Form's PaymentContainer.ListOrderButton", function()
+    T.Test("creates a button anchored to the bottom-right of ProfessionsCustomerOrdersFrame", function()
         local fakeForm = BuildFakeForm(stub)
+        -- A separate local, not an inline table literal, so the test can assert the button
+        -- was anchored to this *exact* table (the whole window), not some other frame.
+        local ordersFrame = { Form = fakeForm }
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
-            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = ordersFrame },
         })
 
         local button = loaded.frames[#loaded.frames]
         T.AssertTrue(button ~= nil, "expected a button frame to have been created")
         T.AssertEqual(button:GetText(), "+ Shopping List", "expected the button's label")
-        -- The full anchor tuple, not just the reference frame -- issue #18's in-game recon
-        -- found two different anchor points that each passed a reference-frame-only
-        -- assertion but still rendered wrong in practice (off-window, then overlapping a
-        -- third-party addon's wider buttons in the same toolbar row).
-        T.AssertEqual(button._point[1], "TOP", "expected the button's own TOP point")
-        T.AssertEqual(button._point[2], fakeForm.PaymentContainer.ListOrderButton,
-            "expected the button anchored to PaymentContainer.ListOrderButton")
-        T.AssertEqual(button._point[3], "BOTTOM", "expected anchored to its BOTTOM")
-        T.AssertTrue(button._point[5] < 0, "expected a negative y offset, growing downward")
+        -- Mirrors Profession Shopping List's own "Core Alloy" button anchor exactly (see
+        -- OrderShoppingButton.lua's header comment for the source this was confirmed against)
+        -- -- anchored to the whole window, not .Form, which two earlier anchor attempts got
+        -- wrong despite each passing their own reference-frame-only assertion at the time.
+        T.AssertEqual(button._point[1], "BOTTOMRIGHT", "expected the button's own BOTTOMRIGHT point")
+        T.AssertEqual(button._point[2], ordersFrame,
+            "expected the button anchored to ProfessionsCustomerOrdersFrame itself, not .Form")
+        T.AssertTrue(button._point[3] < 0, "expected a negative x offset, inset from the right edge")
+        T.AssertEqual(button._point[4], 5, "expected the same y offset Core Alloy itself uses")
     end)
 
     T.Test("disables the button when Auctionator isn't available", function()

@@ -146,9 +146,6 @@ return function(stub, T)
 
     T.Test("SetupMinimumQualityDefault applies once when the Form is found", function()
         local fakeForm = stub.MakeFrame()
-        -- OrderShoppingButton.lua's own OnFormFound hook also fires and needs this to anchor
-        -- its button against -- see order_screen_spec.lua's header comment for why.
-        fakeForm.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
         fakeForm.order = { spellID = 111, orderType = CraftingOrderType.Guild, minQuality = 1 }
         fakeForm.minQualityIDs = { 4, 5, 6, 7, 8 }
         fakeForm.committed = false
@@ -165,7 +162,6 @@ return function(stub, T)
 
     T.Test("SetupMinimumQualityDefault re-checks when UpdateReagentSlots runs", function()
         local fakeForm = stub.MakeFrame()
-        fakeForm.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
         fakeForm.order = { spellID = 111, orderType = CraftingOrderType.Guild, minQuality = 1 }
         fakeForm.minQualityIDs = nil -- not loaded yet when the Form is first found
         fakeForm.committed = false

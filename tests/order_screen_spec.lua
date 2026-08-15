@@ -4,14 +4,9 @@
 -- fakeForm uses stub.MakeFrame(), not a bare {}: once OrderShoppingButton.lua joins the toc,
 -- every OrderScreen.form assignment also triggers button creation against it (OnFormFound
 -- fires unconditionally), so it needs to behave like a real frame (HookScript etc.), not
--- just be comparable by reference. PaymentContainer.ListOrderButton is set for the same
--- reason -- OrderShoppingButton.lua anchors its button there, and unlike a single-level field
--- (tolerated as nil by the stub's permissive SetPoint), a missing PaymentContainer itself
--- errors on the `.ListOrderButton` index before SetPoint is even reached.
+-- just be comparable by reference.
 local function MakeOrderForm(stub)
-    local form = stub.MakeFrame()
-    form.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
-    return form
+    return stub.MakeFrame()
 end
 
 return function(stub, T)
