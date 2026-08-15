@@ -41,7 +41,7 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
 end
 
 return function(stub, T)
-    T.Test("creates a button anchored to the Form's TrackRecipeCheckbox", function()
+    T.Test("creates a button anchored to the right of the Form's TrackRecipeCheckbox", function()
         local fakeForm = BuildFakeForm(stub)
         -- Forward-declared for the same reason as order_recipe_data_spec.lua's mock: a
         -- self-referencing initializer would capture a stray outer/global instead of this
@@ -64,8 +64,15 @@ return function(stub, T)
         local button = loaded.frames[#loaded.frames]
         T.AssertTrue(button ~= nil, "expected a button frame to have been created")
         T.AssertEqual(button:GetText(), "+ CraftQueue", "expected the button's label")
+        -- The full anchor tuple, not just the reference frame -- issue #18's in-game recon
+        -- found the button anchored to TrackRecipeCheckbox's *left* rendered off the visible
+        -- window entirely (no room there), even though the reference-frame-only assertion
+        -- this replaced was passing the whole time.
+        T.AssertEqual(button._point[1], "LEFT", "expected the button's own LEFT point")
         T.AssertEqual(button._point[2], fakeForm.TrackRecipeCheckbox,
             "expected the button anchored to TrackRecipeCheckbox")
+        T.AssertEqual(button._point[3], "RIGHT", "expected anchored to TrackRecipeCheckbox's RIGHT")
+        T.AssertTrue(button._point[4] > 0, "expected a positive x offset, pushing right, not left")
     end)
 
     T.Test("disables the button when CraftSimAPI isn't available", function()

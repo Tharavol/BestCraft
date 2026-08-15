@@ -1,10 +1,14 @@
 -- OrderQueueButton.lua
 -- SPDX-License-Identifier: MIT
 --
--- Adds a button to the order screen, anchored the same way CraftSim anchors its own
--- equivalent button on the other two screens (to the left of TrackRecipeCheckbox -- see
--- CraftSim's Modules/CraftQueue/UI.lua:2106-2118, and docs/order-screen-research.md for why
--- ProfessionsCustomerOrdersFrame.Form has its own TrackRecipeCheckbox to anchor to).
+-- Adds a button to the order screen, anchored to the right of Form.TrackRecipeCheckbox (see
+-- docs/order-screen-research.md for why this screen has its own TrackRecipeCheckbox to anchor
+-- to). Originally anchored to its *left*, mirroring how CraftSim anchors its own equivalent
+-- button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:2106-2118) -- but on
+-- this screen TrackRecipeCheckbox sits flush against the window's own left edge, so that
+-- pushed the button off the visible window entirely (issue #18's in-game recon caught this:
+-- the button existed, IsShown() was true, but it was rendering out past the window, over the
+-- unit frame). Anchoring to the right instead keeps it within the window's own bounds.
 --
 -- Two modes, chosen per order:
 -- - Normal orders: "+ CraftQueue", reaches CraftSim.CRAFTQ through CraftSimAPI:GetCraftSim()
@@ -115,7 +119,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("RIGHT", form.TrackRecipeCheckbox, "LEFT", -18, 0)
+    button:SetPoint("LEFT", form.TrackRecipeCheckbox, "RIGHT", 18, 0)
     button:SetText(QUEUE_LABEL)
     button:SetScript("OnClick", OnClick)
 
