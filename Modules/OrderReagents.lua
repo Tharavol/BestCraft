@@ -57,12 +57,23 @@ end
 -- schematic's reagent slots, choosing the highest-quality item per slot and its full
 -- required quantity. Slots with no confident choice are omitted, not guessed.
 -- OrderShoppingList.lua reshapes this into Auctionator search strings.
+--
+-- Skips any slot whose orderSource is Enum.CraftingOrderReagentSource.Crafter entirely --
+-- confirmed in-game (a real order) that such slots exist and are shown in red on the order
+-- screen. Blizzard's own client source explains why: these are reagents the *crafter* must
+-- personally provide (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT), not something the customer
+-- placing the order can supply -- typically a non-tradable/BoP catalyst reagent, which is
+-- exactly why it can't be bought on the auction house. Putting one on a shopping list the
+-- customer would use to buy things for the crafter is simply wrong, not just unhelpful.
+-- Customer- and Any-sourced slots are unaffected; only Crafter-sourced ones are skipped, and
+-- skipping one doesn't count against allRequiredResolved -- it was never the customer's to
+-- resolve in the first place, unlike a genuinely-unresolved quality pick.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
 ---@return table entries
----@return boolean allRequiredResolved False if a *required* slot had no confident pick --
----   e.g. an optional reagent's ranked choice was never touched by the player, or no
----   candidate reports a quality tier yet. Skipping such a slot silently would hand back an
----   incomplete recipeData/shopping list with no indication a required reagent is missing,
+---@return boolean allRequiredResolved False if a *required*, customer-sourced slot had no
+---   confident pick -- e.g. an optional reagent's ranked choice was never touched by the
+---   player, or no candidate reports a quality tier yet. Skipping such a slot silently would
+---   hand back an incomplete shopping list with no indication a required reagent is missing,
 ---   so callers should refuse to act (rather than proceed) when this is false. Unresolved
 ---   *optional* slots (required == false) don't affect this -- they're expected to be
 ---   skippable.
@@ -70,16 +81,18 @@ function OrderScreen:GetBestQualityReagentEntries(schematicInfo)
     local entries = {}
     local allRequiredResolved = true
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
-        local itemID = PickBestReagent(slot)
-        if itemID then
-            table.insert(entries, {
-                itemID = itemID,
-                quantity = slot.quantityRequired,
-                dataSlotIndex = slot.dataSlotIndex,
-                required = slot.required,
-            })
-        elseif slot.required then
-            allRequiredResolved = false
+        if slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
+            local itemID = PickBestReagent(slot)
+            if itemID then
+                table.insert(entries, {
+                    itemID = itemID,
+                    quantity = slot.quantityRequired,
+                    dataSlotIndex = slot.dataSlotIndex,
+                    required = slot.required,
+                })
+            elseif slot.required then
+                allRequiredResolved = false
+            end
         end
     end
     return entries, allRequiredResolved

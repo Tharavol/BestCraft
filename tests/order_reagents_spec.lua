@@ -1,6 +1,11 @@
 -- order_reagents_spec.lua
 -- SPDX-License-Identifier: MIT
 
+-- Mirrors stub_api.lua's env.Enum.CraftingOrderReagentSource -- this file runs outside the
+-- addon's sandboxed environment, so it needs its own copy rather than reading the addon's
+-- global.
+local CraftingOrderReagentSource = { Any = 0, Customer = 1, Crafter = 2, None = 3 }
+
 return function(stub, T)
     T.Test("includes a single-option slot without needing quality data", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
@@ -126,5 +131,44 @@ return function(stub, T)
         T.AssertEqual(entries[1].itemID, 245345, "expected the basic reagent's only option")
         T.AssertEqual(entries[2].itemID, 240975, "expected the higher-quality rank")
         T.AssertEqual(entries[2].quantity, 5, "expected the quality slot's quantityRequired")
+    end)
+
+    T.Test("excludes a required, Crafter-sourced slot entirely -- not the customer's to buy", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+                {
+                    dataSlotIndex = 2, required = true, quantityRequired = 5,
+                    orderSource = CraftingOrderReagentSource.Crafter,
+                    reagents = { { itemID = 222 } },
+                },
+            },
+        }
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected only the Customer-sourced slot's entry")
+        T.AssertEqual(entries[1].itemID, 111, "expected the non-Crafter-sourced reagent")
+        T.AssertTrue(allRequiredResolved,
+            "expected true -- a Crafter-sourced slot was never the customer's to resolve")
+    end)
+
+    T.Test("includes Customer- and Any-sourced slots normally", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 1, required = true, quantityRequired = 1,
+                    orderSource = CraftingOrderReagentSource.Customer,
+                    reagents = { { itemID = 111 } },
+                },
+                {
+                    dataSlotIndex = 2, required = true, quantityRequired = 1,
+                    orderSource = CraftingOrderReagentSource.Any,
+                    reagents = { { itemID = 222 } },
+                },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 2, "expected both Customer- and Any-sourced slots included")
     end)
 end

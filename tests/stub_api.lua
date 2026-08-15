@@ -95,6 +95,7 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames)
     -- not placeholders -- so a test's Enum.CraftingOrderType.Public matches the real client.
     env.Enum = {
         CraftingOrderType = { Public = 0, Guild = 1, Personal = 2, Npc = 3 },
+        CraftingOrderReagentSource = { Any = 0, Customer = 1, Crafter = 2, None = 3 },
     }
     -- Table+methodName variant only -- the addon never hooks a bare global function.
     env.hooksecurefunc = function(tbl, name, hookFn)
