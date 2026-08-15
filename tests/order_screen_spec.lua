@@ -4,11 +4,19 @@
 -- fakeForm uses stub.MakeFrame(), not a bare {}: once OrderQueueButton.lua joins the toc,
 -- every OrderScreen.form assignment also triggers button creation against it (OnFormFound
 -- fires unconditionally), so it needs to behave like a real frame (HookScript etc.), not
--- just be comparable by reference.
+-- just be comparable by reference. PaymentContainer.ListOrderButton is set for the same
+-- reason -- OrderQueueButton.lua anchors its button there, and unlike a single-level field
+-- (tolerated as nil by the stub's permissive SetPoint), a missing PaymentContainer itself
+-- errors on the `.ListOrderButton` index before SetPoint is even reached.
+local function MakeOrderForm(stub)
+    local form = stub.MakeFrame()
+    form.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
+    return form
+end
 
 return function(stub, T)
     T.Test("locates the order screen's Form when the order addon is already loaded", function()
-        local fakeForm = stub.MakeFrame()
+        local fakeForm = MakeOrderForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
@@ -18,7 +26,7 @@ return function(stub, T)
     end)
 
     T.Test("locates the Form once ADDON_LOADED fires for the order addon", function()
-        local fakeForm = stub.MakeFrame()
+        local fakeForm = MakeOrderForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
         T.AssertEqual(loaded.ns.OrderScreen.form, nil,
             "should not be set before the order addon loads")
@@ -39,7 +47,7 @@ return function(stub, T)
     end)
 
     T.Test("OnFormFound calls back immediately when the Form is already known", function()
-        local fakeForm = stub.MakeFrame()
+        local fakeForm = MakeOrderForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
@@ -50,7 +58,7 @@ return function(stub, T)
     end)
 
     T.Test("OnFormFound calls back once the Form is found later", function()
-        local fakeForm = stub.MakeFrame()
+        local fakeForm = MakeOrderForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
         local calledWith
         loaded.ns.OrderScreen:OnFormFound(function(form) calledWith = form end)

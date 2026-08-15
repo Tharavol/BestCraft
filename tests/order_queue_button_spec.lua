@@ -33,6 +33,7 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
     local form = stub.MakeFrame()
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.AllocateBestQualityCheckbox = stub.MakeFrame()
+    form.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
     form.transaction = {
         GetRecipeID = function() return 12345 end,
         GetRecipeSchematic = schematicFn or BuildSchematic,
@@ -42,7 +43,7 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
 end
 
 return function(stub, T)
-    T.Test("creates a button anchored above the Form's AllocateBestQualityCheckbox", function()
+    T.Test("creates a button anchored below the Form's PaymentContainer.ListOrderButton", function()
         local fakeForm = BuildFakeForm(stub)
         -- Forward-declared for the same reason as order_recipe_data_spec.lua's mock: a
         -- self-referencing initializer would capture a stray outer/global instead of this
@@ -69,11 +70,11 @@ return function(stub, T)
         -- found two different anchor points that each passed a reference-frame-only
         -- assertion but still rendered wrong in practice (off-window, then overlapping a
         -- third-party addon's wider buttons in the same toolbar row).
-        T.AssertEqual(button._point[1], "BOTTOMLEFT", "expected the button's own BOTTOMLEFT point")
-        T.AssertEqual(button._point[2], fakeForm.AllocateBestQualityCheckbox,
-            "expected the button anchored to AllocateBestQualityCheckbox")
-        T.AssertEqual(button._point[3], "TOPLEFT", "expected anchored to its TOPLEFT")
-        T.AssertTrue(button._point[5] > 0, "expected a positive y offset, growing upward")
+        T.AssertEqual(button._point[1], "TOP", "expected the button's own TOP point")
+        T.AssertEqual(button._point[2], fakeForm.PaymentContainer.ListOrderButton,
+            "expected the button anchored to PaymentContainer.ListOrderButton")
+        T.AssertEqual(button._point[3], "BOTTOM", "expected anchored to its BOTTOM")
+        T.AssertTrue(button._point[5] < 0, "expected a negative y offset, growing downward")
     end)
 
     T.Test("disables the button when CraftSimAPI isn't available", function()

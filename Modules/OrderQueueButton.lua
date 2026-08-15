@@ -1,11 +1,11 @@
 -- OrderQueueButton.lua
 -- SPDX-License-Identifier: MIT
 --
--- Adds a button to the order screen, anchored above Form.AllocateBestQualityCheckbox (the
--- native "Use Best Quality Reagents" checkbox -- see docs/order-screen-research.md). That
--- spot stays empty regardless of how many reagent slots a recipe has (confirmed across
--- several in-game recipes with differing reagent counts, all showing the same clear gap
--- above it), which two earlier anchor attempts didn't have:
+-- Adds a button to the order screen, anchored below Form.PaymentContainer.ListOrderButton
+-- (the "Place Order" submit button -- see docs/order-screen-research.md), the same way
+-- Blizzard's own "Core Alloy" specialization button sits below the left panel's currency row:
+-- a fixed, uncrowded spot in the panel's own empty margin rather than squeezed into a toolbar
+-- row shared with other addons. Two earlier anchor attempts learned that the hard way:
 --
 -- 1. Originally anchored to TrackRecipeCheckbox's *left*, mirroring how CraftSim anchors its
 --    own equivalent button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:
@@ -18,6 +18,8 @@
 --    checkbox, extending further right than the native frame's own bounds account for, so a
 --    fixed offset from the native widget still collided with whatever else happens to share
 --    that toolbar row for a given user's addon setup.
+-- 3. Tried above Form.AllocateBestQualityCheckbox instead -- worked, no collisions, but
+--    pushed into the reagent-list panel's own content area rather than sitting apart from it.
 --
 -- Two modes, chosen per order:
 -- - Normal orders: "+ CraftQueue", reaches CraftSim.CRAFTQ through CraftSimAPI:GetCraftSim()
@@ -128,7 +130,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("BOTTOMLEFT", form.AllocateBestQualityCheckbox, "TOPLEFT", 0, 8)
+    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -8)
     button:SetText(QUEUE_LABEL)
     button:SetScript("OnClick", OnClick)
 
