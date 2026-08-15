@@ -18,7 +18,7 @@ end
 
 return function(stub, T)
     T.Test("sets the index to the last minQualityIDs entry on a Guild order", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub)
         form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
@@ -31,7 +31,7 @@ return function(stub, T)
     end)
 
     T.Test("does nothing on a Public order", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub,
             { order = { spellID = 111, orderType = CraftingOrderType.Public, minQuality = 1 } })
@@ -44,7 +44,7 @@ return function(stub, T)
     end)
 
     T.Test("applies on a Personal order too -- the dropdown isn't Public-only despite the name", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub,
             { order = { spellID = 111, orderType = CraftingOrderType.Personal, minQuality = 1 } })
@@ -57,7 +57,7 @@ return function(stub, T)
     end)
 
     T.Test("does nothing once already committed", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub, { committed = true })
         form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
@@ -69,7 +69,7 @@ return function(stub, T)
     end)
 
     T.Test("does nothing without minQualityIDs (recipe not yet loaded)", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub)
         form.minQualityIDs = nil -- a table literal with a nil value drops the key entirely,
@@ -83,7 +83,7 @@ return function(stub, T)
     end)
 
     T.Test("does nothing when minQualityIDs only has the None placeholder", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub, { minQualityIDs = { 4 } })
         form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
@@ -95,7 +95,7 @@ return function(stub, T)
     end)
 
     T.Test("does not re-apply on a second call for the same recipe (respects a manual change back to None)", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub)
         form.SetMinimumQualityIndex = function(_, index)
@@ -116,7 +116,7 @@ return function(stub, T)
     end)
 
     T.Test("re-applies once the recipe (spellID) changes on the same draft", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub)
         form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
@@ -133,7 +133,7 @@ return function(stub, T)
     end)
 
     T.Test("does not override a minQuality the player already chose above None", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local setCalls = {}
         local form = BuildForm(stub, { order = { spellID = 111, orderType = CraftingOrderType.Guild, minQuality = 2 } })
         form.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
@@ -146,7 +146,7 @@ return function(stub, T)
 
     T.Test("SetupMinimumQualityDefault applies once when the Form is found", function()
         local fakeForm = stub.MakeFrame()
-        -- OrderQueueButton.lua's own OnFormFound hook also fires and needs this to anchor
+        -- OrderShoppingButton.lua's own OnFormFound hook also fires and needs this to anchor
         -- its button against -- see order_screen_spec.lua's header comment for why.
         fakeForm.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
         fakeForm.order = { spellID = 111, orderType = CraftingOrderType.Guild, minQuality = 1 }
@@ -156,7 +156,7 @@ return function(stub, T)
         fakeForm.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
 
         stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
         })
 
@@ -174,7 +174,7 @@ return function(stub, T)
         fakeForm.SetMinimumQualityIndex = function(_, index) table.insert(setCalls, index) end
 
         stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true, Blizzard_ProfessionsCustomerOrders = true },
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
         })
         T.AssertEqual(#setCalls, 0, "expected no call before minQualityIDs is populated")

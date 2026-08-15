@@ -1,9 +1,12 @@
 -- Core.lua
 -- SPDX-License-Identifier: MIT
 --
--- Entry point. Confirms CraftSim is present -- this addon has nothing to do without it --
--- before any feature code runs. The actual order-screen button and CraftQueue integration
--- land in later milestones; see https://github.com/Tharavol/BestCraft/milestones
+-- Entry point. Confirms Auctionator is present -- this addon has nothing to do without it,
+-- since every order (recraft or not) is handled by building an Auctionator shopping list --
+-- before any feature code runs. CraftSim was an earlier hard dependency (the original design
+-- queued normal orders into CraftSim.CRAFTQ); that path was retired in favor of always using
+-- Auctionator directly, so CraftSim is no longer required at all. See
+-- docs/craftsim-recipedata-notes.md for the retired approach, kept for the record.
 
 local ADDON_NAME, ns = ...
 
@@ -18,8 +21,8 @@ local function OnAddonLoaded(loadedAddonName)
     if loadedAddonName ~= ADDON_NAME then return end
     frame:UnregisterEvent("ADDON_LOADED")
 
-    if not C_AddOns.IsAddOnLoaded("CraftSim") then
-        print("|cffff4444BestCraft|r requires CraftSim to be installed and enabled.")
+    if not C_AddOns.IsAddOnLoaded("Auctionator") then
+        print("|cffff4444BestCraft|r requires Auctionator to be installed and enabled.")
         return
     end
 

@@ -52,7 +52,7 @@ local OrderScreen = ns.OrderScreen
 
 -- Tracks the last recipe (spellID) this was applied for, per order draft object, so a
 -- reagent-only refresh (UpdateReagentSlots also fires for those, not just recipe changes --
--- see OrderQueueButton.lua's own comment on why it hooks that method) doesn't re-stomp a
+-- see OrderShoppingButton.lua's own comment on why it hooks that method) doesn't re-stomp a
 -- minimum quality the player deliberately changed back to None. Only an actual recipe change
 -- on the same draft re-arms it. Weak-keyed so closed drafts don't linger.
 local lastAppliedSpellIDByOrder = setmetatable({}, { __mode = "k" })

@@ -2,9 +2,10 @@
 -- SPDX-License-Identifier: MIT
 --
 -- Picks the highest-quality reagent for each slot on the order screen's recipe schematic,
--- with no independent optimization -- see docs/order-screen-research.md and
--- docs/craftsim-recipedata-notes.md for how this shape was confirmed in-game and cross
--- referenced against CraftSim's own source.
+-- with no independent optimization -- see docs/order-screen-research.md for how this shape
+-- was confirmed in-game (docs/craftsim-recipedata-notes.md also covers it, cross referenced
+-- against CraftSim's own source, though that doc's specific RecipeData-construction path was
+-- later retired -- see OrderShoppingList.lua).
 --
 -- Deliberately does not read `AllocateBestQualityCheckbox` or `transaction:GetAllocations()`
 -- at all: quality is picked directly from each slot's candidate list
@@ -54,11 +55,8 @@ end
 
 -- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
 -- schematic's reagent slots, choosing the highest-quality item per slot and its full
--- required quantity. Slots with no confident choice are omitted, not guessed. Callers
--- reshape this into whatever specific CraftSim.RecipeData method needs -- see
--- docs/craftsim-recipedata-notes.md for why that ended up being
--- SetReagentsByCraftingReagentInfoTbl, not the orderData/SetOrder path this shape was
--- originally built for.
+-- required quantity. Slots with no confident choice are omitted, not guessed.
+-- OrderShoppingList.lua reshapes this into Auctionator search strings.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
 ---@return table entries
 ---@return boolean allRequiredResolved False if a *required* slot had no confident pick --

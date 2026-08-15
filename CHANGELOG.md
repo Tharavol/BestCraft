@@ -10,20 +10,21 @@ All notable changes to the BestCraft addon are documented in this file.
 - Pick the highest-quality reagent per slot from the order's recipe schematic, with no
   independent optimization -- ambiguous slots (multiple choices, no quality tier) are left
   alone rather than guessed at (#2)
-- Build a `CraftSim.RecipeData` for the order's recipe with those reagent choices applied,
-  via `CraftSimAPI:GetRecipeData` + `RecipeData:SetReagentsByCraftingReagentInfoTbl` (#3) --
-  confirmed end-to-end in-game
-- Add a "+ CraftQueue" button to the order screen, anchored to `Form.TrackRecipeCheckbox`
-  like CraftSim's own equivalent button on the other two screens; enabled only when
-  `CraftSim.CRAFTQ:IsRecipeQueueable` agrees; clicking calls `CraftSim.CRAFTQ:AddRecipe`
-- Recraft orders: since CraftSim's CraftQueue doesn't support recraft recipes at all, the
-  button switches to "+ Shopping List" and builds an Auctionator shopping list directly via
-  `Auctionator.API.v1`, using the same highest-quality reagent selection (#18)
-- Refuse to queue or build a shopping list when a required reagent slot has no confident
-  quality pick, instead of silently omitting it -- the button disables and clicking shows a
-  message rather than handing back an incomplete recipeData/shopping list (#4). The native
-  "Use Best Quality Reagents" checkbox itself needs no handling: BestCraft never reads it,
-  always computing quality directly from the schematic regardless of its state
+- Add a "+ Shopping List" button to the order screen, below `Form.PaymentContainer.ListOrderButton`
+  (three earlier anchor points collided with other addons or the window's own edge -- see
+  `Modules/OrderShoppingButton.lua`'s header comment for the full trail). Builds an
+  Auctionator shopping list via `Auctionator.API.v1`, for every order -- recraft or not (#18).
+  Earlier versions split this into two modes: normal orders queued into `CraftSim.CRAFTQ`
+  (via a `CraftSim.RecipeData` built through `CraftSimAPI:GetRecipeData`, #3), and only
+  recraft orders (which `CraftSim.CRAFTQ` refuses outright) got the Auctionator path. That
+  split was retired in favor of a single shopping-list-only flow for every order, so CraftSim
+  is no longer a dependency at all -- see `docs/craftsim-recipedata-notes.md` for the retired
+  approach, kept for the record
+- Refuse to build a shopping list when a required reagent slot has no confident quality pick,
+  instead of silently omitting it -- the button disables and clicking shows a message rather
+  than handing back an incomplete shopping list (#4). The native "Use Best Quality Reagents"
+  checkbox itself needs no handling: BestCraft never reads it, always computing quality
+  directly from the schematic regardless of its state
 - Default the order's Minimum Quality dropdown to the recipe's highest real tier
   (`#Form.minQualityIDs`, index 1 being a "None" placeholder) on Guild and Personal orders,
   once per recipe per draft so a manual change back to None isn't re-stomped by a

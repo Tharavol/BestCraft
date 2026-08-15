@@ -1,6 +1,13 @@
 # Constructing a CraftSim.RecipeData for an order-screen recipe
 
-## Current approach (implemented in Modules/OrderRecipeData.lua)
+**Retired.** This approach (`Modules/OrderRecipeData.lua`, since deleted) queued normal orders
+into `CraftSim.CRAFTQ` while only recraft orders (which `CraftSim.CRAFTQ` refuses outright) got
+an Auctionator shopping list. It worked, confirmed in-game (issue #18) -- but per feedback, a
+single shopping-list-only flow for every order (`Modules/OrderShoppingList.lua`) is simpler and
+is what's wanted, so this whole path (and the CraftSim dependency it required) was dropped.
+Kept here for the record, same as this doc's own "What didn't work" section below.
+
+## Former approach (was implemented in Modules/OrderRecipeData.lua)
 
 ```lua
 local recipeData = CraftSimAPI:GetRecipeData({ recipeID = recipeID, isRecraft = isRecraft })

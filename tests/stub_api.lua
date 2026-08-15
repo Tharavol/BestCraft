@@ -134,7 +134,7 @@ end
 
 -- Loads the addon fresh: a new stub environment and a new shared `ns` table, exactly
 -- like WoW handing each file the same addon table via `...`.
--- opts.addonsLoaded: optional set ({ CraftSim = true }) fed to C_AddOns.IsAddOnLoaded.
+-- opts.addonsLoaded: optional set ({ Auctionator = true }) fed to C_AddOns.IsAddOnLoaded.
 -- opts.presetGlobals: optional table of globals (e.g. a fake ProfessionsCustomerOrdersFrame)
 -- set on the environment before any addon file executes, for frames the addon doesn't
 -- create itself and must instead find already sitting in the global namespace.

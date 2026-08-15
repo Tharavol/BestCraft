@@ -1,4 +1,4 @@
--- recraft_shopping_list_spec.lua
+-- order_shopping_list_spec.lua
 -- SPDX-License-Identifier: MIT
 
 local function BuildFakeForm(stub, schematic)
@@ -7,7 +7,6 @@ local function BuildFakeForm(stub, schematic)
     form.transaction = {
         GetRecipeID = function() return 999 end,
         GetRecipeSchematic = function() return schematic end,
-        IsRecraft = function() return true end,
     }
     return form
 end
@@ -20,46 +19,46 @@ local ONE_SLOT_SCHEMATIC = {
 
 return function(stub, T)
     T.Test("IsAuctionatorAvailable is false when Auctionator isn't present", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         T.AssertFalse(loaded.ns.OrderScreen:IsAuctionatorAvailable(), "expected false without Auctionator")
     end)
 
-    T.Test("GetRecraftShoppingEntries returns nil without a form", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
-        T.AssertEqual(loaded.ns.OrderScreen:GetRecraftShoppingEntries(), nil, "expected nil without a form")
+    T.Test("GetShoppingEntries returns nil without a form", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        T.AssertEqual(loaded.ns.OrderScreen:GetShoppingEntries(), nil, "expected nil without a form")
     end)
 
-    T.Test("GetRecraftShoppingEntries reads the current schematic", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+    T.Test("GetShoppingEntries reads the current schematic", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
-        local entries = loaded.ns.OrderScreen:GetRecraftShoppingEntries()
+        local entries = loaded.ns.OrderScreen:GetShoppingEntries()
         T.AssertEqual(#entries, 1, "expected one entry")
         T.AssertEqual(entries[1].itemID, 111, "expected the schematic's itemID")
         T.AssertEqual(entries[1].quantity, 3, "expected the schematic's quantityRequired")
     end)
 
-    T.Test("CreateRecraftShoppingList fails with a message when Auctionator isn't available", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+    T.Test("CreateShoppingList fails with a message when Auctionator isn't available", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
-        local ok, message = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
         T.AssertFalse(ok, "expected failure")
         T.AssertTrue(message ~= nil and message:find("Auctionator") ~= nil, "expected an Auctionator-related message")
     end)
 
-    T.Test("CreateRecraftShoppingList fails with a message when there are no reagents to shop for", function()
+    T.Test("CreateShoppingList fails with a message when there are no reagents to shop for", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             presetGlobals = { Auctionator = { API = { v1 = {} } } },
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, { reagentSlotSchematics = {} })
-        local ok, message = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
         T.AssertFalse(ok, "expected failure")
         T.AssertTrue(message ~= nil, "expected a message")
     end)
 
-    T.Test("CreateRecraftShoppingList fails with a message when a required reagent can't be resolved", function()
+    T.Test("CreateShoppingList fails with a message when a required reagent can't be resolved", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             presetGlobals = { Auctionator = { API = { v1 = {} } } },
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
@@ -70,28 +69,28 @@ return function(stub, T)
                 },
             },
         })
-        local ok, message = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
         T.AssertFalse(ok, "expected failure")
         T.AssertTrue(message ~= nil and message:find("required") ~= nil, "expected a required-reagent message")
     end)
 
-    T.Test("CreateRecraftShoppingList fails with a message when item names can't be resolved", function()
+    T.Test("CreateShoppingList fails with a message when item names can't be resolved", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             presetGlobals = { Auctionator = { API = { v1 = {} } } },
             itemNames = {}, -- itemID 111 deliberately not resolvable
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
-        local ok, message = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
         T.AssertFalse(ok, "expected failure")
         T.AssertTrue(message ~= nil, "expected a message")
     end)
 
-    T.Test("CreateRecraftShoppingList builds search strings and creates the list", function()
+    T.Test("CreateShoppingList builds search strings and creates the list, named BestCraft", function()
         local convertCalls = {}
         local createCalls = {}
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             reagentQualities = { [111] = 3 },
             itemNames = { [111] = "Glimmering Gemdust" },
             presetGlobals = {
@@ -116,7 +115,7 @@ return function(stub, T)
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
 
-        local ok = loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        local ok = loaded.ns.OrderScreen:CreateShoppingList()
 
         T.AssertTrue(ok, "expected success")
         T.AssertEqual(#convertCalls, 1, "expected one ConvertToSearchString call")
@@ -125,14 +124,16 @@ return function(stub, T)
         T.AssertEqual(convertCalls[1].term.tier, 3, "expected the reagent quality passed as tier")
         T.AssertEqual(convertCalls[1].term.quantity, 3, "expected the schematic's quantityRequired")
         T.AssertEqual(#createCalls, 1, "expected one CreateShoppingList call")
+        T.AssertEqual(createCalls[1].listName, "BestCraft",
+            "expected a single unified list name, not the old recraft-specific one")
         T.AssertEqual(createCalls[1].searchStrings[1], "search:Glimmering Gemdust",
             "expected the converted search string in the list")
     end)
 
-    T.Test("CreateRecraftShoppingList deletes an existing list under the same name first", function()
+    T.Test("CreateShoppingList deletes an existing list under the same name first", function()
         local deleteCalls = {}
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             reagentQualities = { [111] = 3 },
             itemNames = { [111] = "Glimmering Gemdust" },
             presetGlobals = {
@@ -154,8 +155,9 @@ return function(stub, T)
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
 
-        loaded.ns.OrderScreen:CreateRecraftShoppingList()
+        loaded.ns.OrderScreen:CreateShoppingList()
 
         T.AssertEqual(#deleteCalls, 1, "expected the existing list to be deleted first")
+        T.AssertEqual(deleteCalls[1], "BestCraft", "expected the unified list name deleted")
     end)
 end

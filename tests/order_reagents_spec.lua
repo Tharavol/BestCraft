@@ -3,7 +3,7 @@
 
 return function(stub, T)
     T.Test("includes a single-option slot without needing quality data", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
@@ -19,7 +19,7 @@ return function(stub, T)
 
     T.Test("picks the highest-quality option when quality data distinguishes them", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             reagentQualities = { [201] = 2, [202] = 3 },
         })
         local schematicInfo = {
@@ -37,7 +37,7 @@ return function(stub, T)
     end)
 
     T.Test("skips a multi-option slot when no option reports a quality tier", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 {
@@ -52,7 +52,7 @@ return function(stub, T)
     end)
 
     T.Test("skips a slot with no reagent options at all", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = {} },
@@ -63,7 +63,7 @@ return function(stub, T)
     end)
 
     T.Test("reports allRequiredResolved=false when a required slot has no confident pick", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
@@ -79,7 +79,7 @@ return function(stub, T)
     end)
 
     T.Test("reports allRequiredResolved=true when only an optional slot is unresolved", function()
-        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
@@ -95,7 +95,7 @@ return function(stub, T)
 
     T.Test("handles multiple slots together, matching the real order's shape", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
-            addonsLoaded = { CraftSim = true },
+            addonsLoaded = { Auctionator = true },
             reagentQualities = { [240974] = 2, [240975] = 3 },
         })
         -- Mirrors the real slot shapes recorded in docs/order-screen-research.md: a basic

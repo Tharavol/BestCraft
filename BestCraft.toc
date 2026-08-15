@@ -1,20 +1,18 @@
 ## Interface: 120100
 ## Title: BestCraft
-## Notes: Adds a button to the Place Crafting Order screen that queues the highest quality reagents for a crafting order into CraftSim's CraftQueue for purchase
+## Notes: Adds a button to the Place Crafting Order screen that builds an Auctionator shopping list for the highest quality reagents for a crafting order
 ## Author: Tharavol, Claude
 ## Version: @project-version@
 ## IconTexture: Interface\Icons\inv_misc_symbolofkings_01
 ## X-License: MIT
-## Dependencies: CraftSim
-## OptionalDeps: Auctionator
+## Dependencies: Auctionator
 
-## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and queues it into CraftSim's CraftQueue -- so CraftSim's existing shopping-list generation tells you exactly what to go buy. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires CraftSim. Source and issues: https://github.com/Tharavol/BestCraft
+## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and builds an Auctionator shopping list for exactly what to go buy -- for every order, recraft or not. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires Auctionator. Source and issues: https://github.com/Tharavol/BestCraft
 
 Core.lua
 
 Modules/OrderScreen.lua
 Modules/OrderReagents.lua
-Modules/OrderRecipeData.lua
-Modules/RecraftShoppingList.lua
-Modules/OrderQueueButton.lua
+Modules/OrderShoppingList.lua
+Modules/OrderShoppingButton.lua
 Modules/OrderMinimumQuality.lua

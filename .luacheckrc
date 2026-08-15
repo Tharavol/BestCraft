@@ -15,7 +15,6 @@ read_globals = {
     "C_AddOns",
     "C_Item",
     "C_TradeSkillUI",
-    "CraftSimAPI",
     "CreateFrame",
     "Enum",
     "hooksecurefunc",
@@ -24,7 +23,7 @@ read_globals = {
     -- docs/order-screen-research.md for how it was identified.
     "ProfessionsCustomerOrdersFrame",
 
-    -- Auctionator's addon table (optional dependency, used only for recraft orders --
-    -- see Modules/RecraftShoppingList.lua).
+    -- Auctionator's addon table -- the addon's sole dependency, see
+    -- Modules/OrderShoppingList.lua.
     "Auctionator",
 }

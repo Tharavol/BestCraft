@@ -1,20 +1,26 @@
--- RecraftShoppingList.lua
+-- OrderShoppingList.lua
 -- SPDX-License-Identifier: MIT
 --
--- Recraft orders can't go through CraftSim.CRAFTQ:AddRecipe -- CraftSim.CRAFTQ:IsRecipeQueueable
--- explicitly refuses any recipeData.isRecraft recipe (Modules/CraftQueue/CraftQueue.lua:1303),
--- and for a real reason: recrafting needs a specific target item's GUID (RecraftSlot,
--- allocationItemGUID), which fits "I'm personally recrafting my own item," not "I'm a
--- customer commissioning someone else's recraft." So this builds an Auctionator shopping
--- list directly instead, via Auctionator.API.v1 -- Auctionator's own documented public API,
--- the same one CraftSim's own CreateAuctionatorShoppingList uses
--- (Modules/CraftQueue/CraftQueue.lua:1251,1254) and ShoppingConverter reads back out of.
+-- Builds an Auctionator shopping list for the order screen's current recipe -- every order,
+-- not just recraft ones. Originally recraft-only: CraftSim.CRAFTQ:IsRecipeQueueable explicitly
+-- refuses any recipeData.isRecraft recipe (Modules/CraftQueue/CraftQueue.lua:1303), for a real
+-- reason (recrafting needs a specific target item's GUID, which fits "I'm personally
+-- recrafting my own item," not "I'm a customer commissioning someone else's recraft"), so
+-- recraft orders got their own Auctionator-only path while normal orders queued into
+-- CraftSim.CRAFTQ instead. Confirmed in-game (issue #18) that the CraftQueue path actually
+-- worked -- but per feedback, a single shopping-list-only flow for every order is simpler and
+-- is what's wanted, so that's now the only path; see docs/craftsim-recipedata-notes.md for the
+-- retired CraftQueue-based approach, kept for the record.
+--
+-- Builds via Auctionator.API.v1 -- Auctionator's own documented public API, the same one
+-- CraftSim's own CreateAuctionatorShoppingList used (Modules/CraftQueue/CraftQueue.lua:
+-- 1251,1254) and ShoppingConverter reads back out of.
 
 local ADDON_NAME, ns = ...
 
 local OrderScreen = ns.OrderScreen
 
-local LIST_NAME = "BestCraft Recraft Reagents"
+local LIST_NAME = "BestCraft"
 
 function OrderScreen:IsAuctionatorAvailable()
     return Auctionator ~= nil and Auctionator.API ~= nil and Auctionator.API.v1 ~= nil
@@ -26,7 +32,7 @@ end
 ---@return table? entries
 ---@return boolean? allRequiredResolved See OrderReagents.lua's GetBestQualityReagentEntries.
 ---   nil (not false) when entries itself is nil -- there's nothing to qualify.
-function OrderScreen:GetRecraftShoppingEntries()
+function OrderScreen:GetShoppingEntries()
     local form = self.form
     local transaction = form and form.transaction
     if not transaction then
@@ -63,12 +69,12 @@ end
 
 ---@return boolean success
 ---@return string? message Set on failure, for the caller to show the player.
-function OrderScreen:CreateRecraftShoppingList()
+function OrderScreen:CreateShoppingList()
     if not self:IsAuctionatorAvailable() then
-        return false, "Auctionator is required to build a shopping list for a recraft order."
+        return false, "Auctionator is required to build a shopping list for this order."
     end
 
-    local entries, allRequiredResolved = self:GetRecraftShoppingEntries()
+    local entries, allRequiredResolved = self:GetShoppingEntries()
     if not entries then
         return false, "No reagents to shop for on this order."
     end

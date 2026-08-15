@@ -57,20 +57,25 @@ slot -- including slots at 0 owned (the screen still shows a specific item icon 
 unowned reagent, meaning the choice of *which item*, not just *which quality tier*, is
 already resolved).
 
-**Implication for the addon:** no independent quality-selection algorithm is needed. Read
-`transaction:GetAllocations()` (or equivalent enumeration) as the source of truth, translate
-it into whatever `CraftSim.CRAFTQ:AddRecipe(options)` expects, and let CraftSim's existing
-`CreateAutoShoppingListAfterQueue` do the rest. This is a translator between two data shapes,
-not an optimizer.
+**Implication for the addon:** no independent quality-selection algorithm is needed -- this
+part held up. The original plan for what to *do* with that reading (translate into
+`CraftSim.CRAFTQ:AddRecipe(options)`) was later retired in favor of building an Auctionator
+shopping list directly for every order; see `docs/craftsim-recipedata-notes.md` and
+`Modules/OrderShoppingList.lua`. This is (and remains) a translator between two data shapes,
+not an optimizer -- just a different destination shape now.
 
 ## Still open (implementation-time work, not further recon)
 
-- Exact shape `transaction:GetAllocations()` / `EnumerateAllocations()` returns, and how to
-  map it into a `CraftSim.CraftingReagentInfo`-style table.
-- How to construct a `CraftSim.RecipeData` around a `recipeID` sourced from this order
+The first two items below were about the CraftQueue-based plan and are moot now that that
+whole path is retired (see the note above) -- kept for the record, not because they're still
+open.
+
+- ~~Exact shape `transaction:GetAllocations()` / `EnumerateAllocations()` returns, and how to
+  map it into a `CraftSim.CraftingReagentInfo`-style table.~~
+- ~~How to construct a `CraftSim.RecipeData` around a `recipeID` sourced from this order
   screen (`ProfessionsCustomerOrdersFrame.Form.order` when viewing an existing draft) rather
   than from `CraftSim.MODULES.recipeData` (which is only populated from the two screens
-  CraftSim itself hooks).
+  CraftSim itself hooks).~~
 - `ProfessionsCustomerOrdersFrame` is provided by the load-on-demand
   `Blizzard_ProfessionsCustomerOrders` addon; confirm whether hooking on `ADDON_LOADED` for
   that addon name is sufficient, or whether the frame needs an `OnShow` hook too (mirroring
