@@ -37,6 +37,63 @@ return function(stub, T)
         T.AssertEqual(entries[1].quantity, 3, "expected the schematic's quantityRequired")
     end)
 
+    local RANKED_SCHEMATIC = {
+        reagentSlotSchematics = {
+            {
+                dataSlotIndex = 1, required = true, quantityRequired = 5,
+                reagents = { { itemID = 201 }, { itemID = 202 } },
+            },
+        },
+    }
+
+    T.Test("GetShoppingEntries prefers lowest quality when the recipe's output has no real tier",
+        function()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                reagentQualities = { [201] = 2, [202] = 3 },
+            })
+            local form = BuildFakeForm(stub, RANKED_SCHEMATIC)
+            form.minQualityIDs = { 4 } -- length 1: only the "None" placeholder, no real tier
+            loaded.ns.OrderScreen.form = form
+
+            local entries = loaded.ns.OrderScreen:GetShoppingEntries()
+
+            T.AssertEqual(entries[1].itemID, 201, "expected the lower-quality reagent")
+        end)
+
+    T.Test("GetShoppingEntries prefers highest quality when the recipe's output has real tiers",
+        function()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                reagentQualities = { [201] = 2, [202] = 3 },
+            })
+            local form = BuildFakeForm(stub, RANKED_SCHEMATIC)
+            form.minQualityIDs = { 4, 5, 6, 7, 8 } -- real tiers beyond the None placeholder
+            loaded.ns.OrderScreen.form = form
+
+            local entries = loaded.ns.OrderScreen:GetShoppingEntries()
+
+            T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality reagent")
+        end)
+
+    T.Test("GetShoppingEntries prefers highest quality when minQualityIDs isn't known yet", function()
+        -- Not the same as "confirmed no real tier" (length <= 1) -- nil means we simply don't
+        -- know yet (a load-order edge case), and defaulting to lowest quality in that case
+        -- would risk silently under-quality-ing a genuinely ranked recipe. Highest is the
+        -- safer default when uncertain.
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            reagentQualities = { [201] = 2, [202] = 3 },
+        })
+        local form = BuildFakeForm(stub, RANKED_SCHEMATIC)
+        form.minQualityIDs = nil
+        loaded.ns.OrderScreen.form = form
+
+        local entries = loaded.ns.OrderScreen:GetShoppingEntries()
+
+        T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality reagent -- safe default")
+    end)
+
     T.Test("CreateShoppingList fails with a message when Auctionator isn't available", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)

@@ -78,3 +78,11 @@ All notable changes to the BestCraft addon are documented in this file.
   name and a "Name [xN], ..." summary of every material added, per feedback ("what was added
   and why"). `CreateShoppingList` now returns a message on both outcomes; the click handler
   just prints whatever comes back rather than branching on success/failure
+- Prefer the *lowest*-quality reagent per slot instead of the highest, for a recipe whose
+  crafted output has no quality tiers of its own -- confirmed against a real order (Thalassian
+  Treatise on Enchanting) that paying for premium reagents buys nothing there, since the
+  result can't rank up regardless. Detected via `Form.minQualityIDs` (the same per-recipe data
+  issue #17 already reads), and only when that data is confirmed to show no real tier --
+  *not* merely when it isn't known yet, which stays on the historical highest-quality default
+  as the safer failure mode. `GetBestQualityReagentEntries` renamed to `GetChosenReagentEntries`
+  to keep the name honest now that "best" doesn't always mean highest

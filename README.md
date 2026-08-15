@@ -1,13 +1,13 @@
 BestCraft
 =========
 
-World of Warcraft retail addon that adds a button to the customer-side "Place Crafting Order" screen to get you the highest-quality reagents for that order, with no guesswork about which item or rank to pick.
+World of Warcraft retail addon that adds a button to the customer-side "Place Crafting Order" screen to get you the right-quality reagents for that order, with no guesswork about which item or rank to pick.
 
 This is an unofficial companion addon and is not affiliated with or endorsed by Auctionator's authors.
 
 Why
 ---
-On the order-creation screen, Blizzard's own "Use Best Quality Reagents" checkbox already picks the best-quality reagent for each slot -- but there's no way to turn that into a shopping list. BestCraft reads the order screen's already-computed reagent choice and builds an Auctionator shopping list from it, for orders you're placing for someone else to craft (recraft orders included). No independent quality or price optimization -- just the highest quality, no guesswork.
+On the order-creation screen, Blizzard's own "Use Best Quality Reagents" checkbox already picks the best-quality reagent for each slot -- but there's no way to turn that into a shopping list. BestCraft reads the order screen's already-computed reagent choice and builds an Auctionator shopping list from it, for orders you're placing for someone else to craft (recraft orders included). No independent quality or price optimization -- just the highest quality, no guesswork -- with one exception: if the recipe's crafted output has no quality tiers of its own, paying extra for premium reagents buys nothing, so BestCraft picks the cheapest reagent for that recipe instead.
 
 Requirements
 ------------

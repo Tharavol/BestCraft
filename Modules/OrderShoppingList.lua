@@ -25,11 +25,19 @@ function OrderScreen:IsAuctionatorAvailable()
     return Auctionator ~= nil and Auctionator.API ~= nil and Auctionator.API.v1 ~= nil
 end
 
--- Returns the highest-quality reagent entries for whatever recipe is currently on the order
--- screen (recraft or not -- the schematic shape needs no special-casing here, see
+-- Returns the chosen reagent entries for whatever recipe is currently on the order screen
+-- (recraft or not -- the schematic shape needs no special-casing here, see
 -- docs/order-screen-research.md), or nil if there's no order/recipe currently loaded.
+--
+-- Prefers the lowest-quality reagent per slot, not the highest, when the recipe's *output*
+-- has no quality tiers of its own -- confirmed against a real order (Thalassian Treatise on
+-- Enchanting) that a recipe like this exists and that paying for premium reagents buys
+-- nothing there, since the crafted result can't rank up regardless. Detected via
+-- Form.minQualityIDs, the same per-recipe data issue #17's Minimum Quality default already
+-- reads (index 1 is a "None" placeholder, not a real tier -- see
+-- docs/minimum-quality-notes.md -- so #minQualityIDs <= 1 means no real tier exists at all).
 ---@return table? entries
----@return boolean? allRequiredResolved See OrderReagents.lua's GetBestQualityReagentEntries.
+---@return boolean? allRequiredResolved See OrderReagents.lua's GetChosenReagentEntries.
 ---   nil (not false) when entries itself is nil -- there's nothing to qualify.
 ---@return string? recipeName schematicInfo.name, for the chat confirmation on success.
 function OrderScreen:GetShoppingEntries()
@@ -44,7 +52,16 @@ function OrderScreen:GetShoppingEntries()
         return nil
     end
 
-    local entries, allRequiredResolved = self:GetBestQualityReagentEntries(schematicInfo)
+    -- Only when minQualityIDs is confirmed present with no real tier (see the header comment)
+    -- -- NOT merely when it's nil/not-yet-known (a load-order edge case OrderMinimumQuality.lua
+    -- also has to guard against). Preferring lowest quality by default whenever this data
+    -- simply isn't ready yet would risk silently under-quality-ing a genuinely ranked recipe;
+    -- staying with the historical highest-quality default when uncertain just costs a bit more
+    -- on an unranked one instead -- the safer failure mode of the two.
+    local minQualityIDs = form.minQualityIDs
+    local preferLowestQuality = minQualityIDs ~= nil and #minQualityIDs <= 1
+
+    local entries, allRequiredResolved = self:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
     return entries, allRequiredResolved, schematicInfo.name
 end
 

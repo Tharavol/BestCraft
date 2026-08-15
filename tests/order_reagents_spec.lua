@@ -15,7 +15,7 @@ return function(stub, T)
                 { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected one entry")
         T.AssertEqual(entries[1].itemID, 111, "expected the only option's itemID")
         T.AssertEqual(entries[1].quantity, 20, "expected quantityRequired to carry through")
@@ -36,10 +36,43 @@ return function(stub, T)
                 },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected one entry")
         T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality itemID")
         T.AssertEqual(entries[1].quantity, 5, "expected quantityRequired to carry through")
+    end)
+
+    T.Test("picks the lowest-quality option when preferLowestQuality is true", function()
+        -- Issue feedback: a recipe whose output has no quality tiers of its own gets no
+        -- benefit from premium reagents (confirmed against a real order, Thalassian Treatise
+        -- on Enchanting) -- OrderShoppingList.lua passes this through in that case.
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            reagentQualities = { [201] = 2, [202] = 3 },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 2, required = true, quantityRequired = 5,
+                    reagents = { { itemID = 201 }, { itemID = 202 } },
+                },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo, true)
+        T.AssertEqual(#entries, 1, "expected one entry")
+        T.AssertEqual(entries[1].itemID, 201, "expected the lower-quality itemID")
+        T.AssertEqual(entries[1].quantity, 5, "expected quantityRequired to carry through")
+    end)
+
+    T.Test("preferLowestQuality doesn't affect a single-option slot", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo, true)
+        T.AssertEqual(entries[1].itemID, 111, "expected the only option regardless of the flag")
     end)
 
     T.Test("skips a multi-option slot when no option reports a quality tier", function()
@@ -53,7 +86,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 0, "expected no entries -- ambiguous choice, not guessed")
     end)
 
@@ -64,7 +97,7 @@ return function(stub, T)
                 { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = {} },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 0, "expected no entries")
     end)
 
@@ -79,7 +112,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected only the resolvable slot's entry")
         T.AssertFalse(allRequiredResolved, "expected false -- a required slot had no confident pick")
     end)
@@ -95,7 +128,7 @@ return function(stub, T)
                 },
             },
         }
-        local _, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local _, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertTrue(allRequiredResolved, "expected true -- only an optional slot was unresolved")
     end)
 
@@ -127,7 +160,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 2, "expected the basic and quality-ranked slots, not the optional one")
         T.AssertEqual(entries[1].itemID, 245345, "expected the basic reagent's only option")
         T.AssertEqual(entries[2].itemID, 240975, "expected the higher-quality rank")
@@ -146,7 +179,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected only the Customer-sourced slot's entry")
         T.AssertEqual(entries[1].itemID, 111, "expected the non-Crafter-sourced reagent")
         T.AssertTrue(allRequiredResolved,
@@ -169,7 +202,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 2, "expected both Customer- and Any-sourced slots included")
     end)
 
@@ -190,7 +223,7 @@ return function(stub, T)
                 },
             },
         }
-        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 0, "expected the BoP reagent excluded")
         T.AssertTrue(allRequiredResolved,
             "expected true -- a BoP reagent was never purchasable, so it's not an unresolved pick")
@@ -203,7 +236,7 @@ return function(stub, T)
                 { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 111 } } },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetBestQualityReagentEntries(schematicInfo)
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected the reagent included -- unknown bind status isn't treated as BoP")
     end)
 end
