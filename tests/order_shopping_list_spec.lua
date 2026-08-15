@@ -130,6 +130,58 @@ return function(stub, T)
             "expected the converted search string in the list")
     end)
 
+    T.Test("CreateShoppingList's success message names the recipe and materials added", function()
+        local schematic = {
+            name = "Thalassian Alchemy Coveralls",
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+                { dataSlotIndex = 2, required = true, quantityRequired = 1, reagents = { { itemID = 222 } } },
+            },
+        }
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality", [222] = "Kaleidoscopic Prism" },
+            presetGlobals = {
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function() end,
+                } } },
+            },
+        })
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic)
+
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
+
+        T.AssertTrue(ok, "expected success")
+        T.AssertTrue(message:find("Thalassian Alchemy Coveralls", 1, true) ~= nil,
+            "expected the recipe name in the confirmation")
+        T.AssertTrue(message:find("Fused Vitality [x20]", 1, true) ~= nil,
+            "expected the first material and quantity")
+        T.AssertTrue(message:find("Kaleidoscopic Prism [x1]", 1, true) ~= nil,
+            "expected the second material and quantity")
+    end)
+
+    T.Test("CreateShoppingList's success message falls back gracefully when the recipe has no name",
+        function()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                reagentQualities = { [111] = 3 },
+                itemNames = { [111] = "Glimmering Gemdust" },
+                presetGlobals = {
+                    Auctionator = { API = { v1 = {
+                        ConvertToSearchString = function(_, term) return term.searchString end,
+                        CreateShoppingList = function() end,
+                    } } },
+                },
+            })
+            loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC) -- no .name field
+
+            local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
+
+            T.AssertTrue(ok, "expected success")
+            T.AssertTrue(message ~= nil and message ~= "", "expected a message even without a recipe name")
+        end)
+
     T.Test("CreateShoppingList deletes an existing list under the same name first", function()
         local deleteCalls = {}
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {

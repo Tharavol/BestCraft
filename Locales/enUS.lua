@@ -32,6 +32,11 @@ L.ERROR_NO_AUCTIONATOR = "Auctionator is required to build a shopping list for t
 L.ERROR_UNRESOLVED_ITEM_NAMES = "Couldn't resolve item names for this order's reagents yet -- try again in a moment."
 L.ERROR_CREATE_FAILED = "Couldn't create the Auctionator shopping list."
 
+-- Confirms what was actually added and why, per feedback -- printed on every successful
+-- CreateShoppingList call. %s/%s = recipe name, "Name [xN], Name [xN], ..." materials summary.
+L.CHAT_LIST_CREATED = "Shopping list ready for \"%s\": %s"
+L.CHAT_UNKNOWN_RECIPE = "this order"
+
 L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
 L.CORE_LOGIN_MESSAGE = "%s loaded. |cffaaaaaa/bestcraft|r for options."
 

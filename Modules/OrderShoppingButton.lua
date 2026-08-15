@@ -85,8 +85,11 @@ local function RefreshButtonState(button)
 end
 
 local function OnClick()
-    local ok, message = OrderScreen:CreateShoppingList()
-    if not ok then
+    -- CreateShoppingList now returns a message on both outcomes -- a chat-ready confirmation
+    -- of the recipe/materials added on success (per feedback), the failure reason otherwise --
+    -- so printing whatever comes back covers both without branching on `ok` here.
+    local _, message = OrderScreen:CreateShoppingList()
+    if message then
         ns.Print(message)
     end
 end

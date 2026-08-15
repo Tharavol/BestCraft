@@ -74,3 +74,7 @@ All notable changes to the BestCraft addon are documented in this file.
   didn't update live, since it only re-evaluated on the order screen's own OnShow/
   UpdateReagentSlots events, neither of which fires just because a setting changed elsewhere.
   `ns.RefreshShoppingButton` exposes the button's own refresh function for exactly this
+- Print a chat confirmation on a successful shopping list, not just on failure -- the recipe
+  name and a "Name [xN], ..." summary of every material added, per feedback ("what was added
+  and why"). `CreateShoppingList` now returns a message on both outcomes; the click handler
+  just prints whatever comes back rather than branching on success/failure

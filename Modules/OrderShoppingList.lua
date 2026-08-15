@@ -31,6 +31,7 @@ end
 ---@return table? entries
 ---@return boolean? allRequiredResolved See OrderReagents.lua's GetBestQualityReagentEntries.
 ---   nil (not false) when entries itself is nil -- there's nothing to qualify.
+---@return string? recipeName schematicInfo.name, for the chat confirmation on success.
 function OrderScreen:GetShoppingEntries()
     local form = self.form
     local transaction = form and form.transaction
@@ -43,11 +44,17 @@ function OrderScreen:GetShoppingEntries()
         return nil
     end
 
-    return self:GetBestQualityReagentEntries(schematicInfo)
+    local entries, allRequiredResolved = self:GetBestQualityReagentEntries(schematicInfo)
+    return entries, allRequiredResolved, schematicInfo.name
 end
 
-local function BuildSearchStrings(entries)
+-- Builds Auctionator search strings and a parallel "Name [xN], Name [xN], ..." human-readable
+-- summary of the same entries together, so each entry's item name is only looked up once.
+---@return table searchStrings
+---@return string summary
+local function BuildSearchStringsAndSummary(entries)
     local searchStrings = {}
+    local summaryParts = {}
     for _, entry in ipairs(entries) do
         local itemName = C_Item.GetItemInfo(entry.itemID)
         if itemName then
@@ -60,20 +67,22 @@ local function BuildSearchStrings(entries)
             })
             if ok and searchString then
                 table.insert(searchStrings, searchString)
+                table.insert(summaryParts, ("%s [x%d]"):format(itemName, entry.quantity))
             end
         end
     end
-    return searchStrings
+    return searchStrings, table.concat(summaryParts, ", ")
 end
 
 ---@return boolean success
----@return string? message Set on failure, for the caller to show the player.
+---@return string? message On failure, why. On success, a chat-ready confirmation of the
+---   recipe and materials added (issue feedback: the player asked what was added and why).
 function OrderScreen:CreateShoppingList()
     if not self:IsAuctionatorAvailable() then
         return false, L.ERROR_NO_AUCTIONATOR
     end
 
-    local entries, allRequiredResolved = self:GetShoppingEntries()
+    local entries, allRequiredResolved, recipeName = self:GetShoppingEntries()
     if not entries then
         return false, L.STATUS_NO_REAGENTS
     end
@@ -84,7 +93,7 @@ function OrderScreen:CreateShoppingList()
         return false, L.STATUS_NO_REAGENTS
     end
 
-    local searchStrings = BuildSearchStrings(entries)
+    local searchStrings, summary = BuildSearchStringsAndSummary(entries)
     if #searchStrings == 0 then
         return false, L.ERROR_UNRESOLVED_ITEM_NAMES
     end
@@ -101,5 +110,5 @@ function OrderScreen:CreateShoppingList()
         return false, L.ERROR_CREATE_FAILED
     end
 
-    return true
+    return true, L.CHAT_LIST_CREATED:format(recipeName or L.CHAT_UNKNOWN_RECIPE, summary)
 end
