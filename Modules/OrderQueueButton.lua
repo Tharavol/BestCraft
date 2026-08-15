@@ -37,13 +37,16 @@ local OrderScreen = ns.OrderScreen
 local QUEUE_LABEL = "+ CraftQueue"
 local RECRAFT_LABEL = "+ Shopping List"
 
+-- Reads Form.order.isRecraft, not transaction:IsRecraft() -- confirmed in-game on a genuine
+-- recraft order draft (recraftGUID already set to a real item) that transaction:IsRecraft()
+-- returns nil, not true. Blizzard's own client source never calls that method either;
+-- InitSchematic branches on self.order.isRecraft throughout (see docs/order-screen-research.md
+-- and docs/minimum-quality-notes.md for how that source was obtained). Before this fix, every
+-- recraft order silently took the CraftQueue path instead of the Auctionator shopping-list
+-- path -- issue #18 wouldn't have been testable at all until this was caught.
 local function IsRecraftOrder()
-    local transaction = OrderScreen.form and OrderScreen.form.transaction
-    if not transaction then
-        return false
-    end
-    local ok, isRecraft = pcall(transaction.IsRecraft, transaction)
-    return ok and isRecraft == true
+    local order = OrderScreen.form and OrderScreen.form.order
+    return order ~= nil and order.isRecraft == true
 end
 
 ---@return table? craftQueue CraftSim.CRAFTQ, or nil if CraftSimAPI/CraftSim aren't ready
@@ -130,7 +133,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -8)
+    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -34)
     button:SetText(QUEUE_LABEL)
     button:SetScript("OnClick", OnClick)
 

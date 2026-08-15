@@ -26,7 +26,6 @@ return function(stub, T)
             transaction = {
                 GetRecipeID = function() return nil end,
                 GetRecipeSchematic = function() return { reagentSlotSchematics = {} } end,
-                IsRecraft = function() return false end,
             },
         }
         T.AssertEqual(loaded.ns.OrderScreen:BuildRecipeData(), nil, "expected nil without a recipeID")
@@ -55,6 +54,7 @@ return function(stub, T)
         }
 
         loaded.ns.OrderScreen.form = {
+            order = { isRecraft = false },
             transaction = {
                 GetRecipeID = function() return 12345 end,
                 GetRecipeSchematic = function()
@@ -67,7 +67,6 @@ return function(stub, T)
                         },
                     }
                 end,
-                IsRecraft = function() return false end,
             },
         }
 
@@ -77,6 +76,8 @@ return function(stub, T)
         T.AssertTrue(allRequiredResolved, "expected true -- the only slot resolved")
         T.AssertEqual(getRecipeDataArgs.recipeID, 12345, "expected recipeID passed to GetRecipeData")
         T.AssertEqual(getRecipeDataArgs.orderData, nil, "expected no orderData -- see the RecipeData notes doc")
+        -- Reads Form.order.isRecraft, not transaction:IsRecraft() -- see OrderQueueButton.lua's
+        -- IsRecraftOrder for why (confirmed in-game that the latter returns nil unreliably).
         T.AssertEqual(getRecipeDataArgs.isRecraft, false, "expected isRecraft passed through")
         T.AssertEqual(#setReagentsArgs, 1, "expected one reagent entry")
         T.AssertEqual(setReagentsArgs[1].reagent.itemID, 111, "expected itemID nested under .reagent")
@@ -102,7 +103,6 @@ return function(stub, T)
                         },
                     }
                 end,
-                IsRecraft = function() return false end,
             },
         }
 
@@ -110,5 +110,30 @@ return function(stub, T)
 
         T.AssertEqual(result, mockRecipeData, "expected the constructed RecipeData still returned")
         T.AssertFalse(allRequiredResolved, "expected false -- the required slot had no confident pick")
+    end)
+
+    T.Test("passes isRecraft=true through when Form.order.isRecraft is true", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { CraftSim = true } })
+
+        local getRecipeDataArgs
+        local mockRecipeData = { SetReagentsByCraftingReagentInfoTbl = function() end }
+        loaded.env.CraftSimAPI = {
+            GetRecipeData = function(_, options)
+                getRecipeDataArgs = options
+                return mockRecipeData
+            end,
+        }
+
+        loaded.ns.OrderScreen.form = {
+            order = { isRecraft = true },
+            transaction = {
+                GetRecipeID = function() return 12345 end,
+                GetRecipeSchematic = function() return { reagentSlotSchematics = {} } end,
+            },
+        }
+
+        loaded.ns.OrderScreen:BuildRecipeData()
+
+        T.AssertEqual(getRecipeDataArgs.isRecraft, true, "expected isRecraft=true passed through")
     end)
 end

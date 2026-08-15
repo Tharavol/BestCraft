@@ -34,10 +34,13 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.AllocateBestQualityCheckbox = stub.MakeFrame()
     form.PaymentContainer = { ListOrderButton = stub.MakeFrame() }
+    -- Form.order.isRecraft, not transaction:IsRecraft() -- see OrderQueueButton.lua's
+    -- IsRecraftOrder for why (confirmed in-game that the latter returns nil unreliably, even
+    -- on a genuine recraft order).
+    form.order = { isRecraft = isRecraft == true }
     form.transaction = {
         GetRecipeID = function() return 12345 end,
         GetRecipeSchematic = schematicFn or BuildSchematic,
-        IsRecraft = function() return isRecraft == true end,
     }
     return form
 end

@@ -45,16 +45,21 @@ function OrderScreen:BuildRecipeData()
         return nil
     end
 
-    local ok, recipeID, schematicInfo, isRecraft = pcall(function()
-        return transaction:GetRecipeID(), transaction:GetRecipeSchematic(), transaction:IsRecraft()
+    local ok, recipeID, schematicInfo = pcall(function()
+        return transaction:GetRecipeID(), transaction:GetRecipeSchematic()
     end)
     if not ok or not recipeID or not schematicInfo then
         return nil
     end
 
+    -- Form.order.isRecraft, not transaction:IsRecraft() -- confirmed in-game that the latter
+    -- returns nil even on a genuine recraft order. See OrderQueueButton.lua's IsRecraftOrder
+    -- for the same finding; this path is only reached for non-recraft orders in practice
+    -- (OrderQueueButton branches recraft orders to RecraftShoppingList.lua instead), but
+    -- reading the wrong field here would still be a live bug waiting to matter.
     local constructOk, recipeData = pcall(CraftSimAPI.GetRecipeData, CraftSimAPI, {
         recipeID = recipeID,
-        isRecraft = isRecraft,
+        isRecraft = (form.order and form.order.isRecraft) == true,
     })
     if not constructOk or not recipeData then
         return nil
