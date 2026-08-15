@@ -40,9 +40,7 @@
 local _, ns = ...
 
 local OrderScreen = ns.OrderScreen
-
-local BUTTON_LABEL = "+ Shopping List"
-local ENABLED_TOOLTIP = "Builds an Auctionator shopping list for this order's highest-quality reagents."
+local L = ns.L
 
 -- The same three checks RefreshButtonState uses to gate SetEnabled, but returning *why* --
 -- issue #8: this screen's other buttons all show a tooltip explaining themselves (see
@@ -51,16 +49,15 @@ local ENABLED_TOOLTIP = "Builds an Auctionator shopping list for this order's hi
 ---@return string? reason nil when the button is/would be enabled
 local function GetDisabledReason()
     if not OrderScreen:IsAuctionatorAvailable() then
-        return "Requires Auctionator to be installed and enabled."
+        return L.STATUS_NO_AUCTIONATOR
     end
 
     local entries, allRequiredResolved = OrderScreen:GetShoppingEntries()
     if not allRequiredResolved then
-        return "Couldn't resolve every required reagent for this order yet -- "
-            .. "try again once all slots have a selection."
+        return L.STATUS_UNRESOLVED_REQUIRED
     end
     if not entries or #entries == 0 then
-        return "No reagents to shop for on this order."
+        return L.STATUS_NO_REAGENTS
     end
 
     return nil
@@ -74,7 +71,7 @@ end
 local function OnClick()
     local ok, message = OrderScreen:CreateShoppingList()
     if not ok then
-        print("|cffff4444BestCraft|r " .. message)
+        print(L.CHAT_PREFIX .. message)
     end
 end
 
@@ -83,7 +80,7 @@ local function OnEnter(button)
     if button.disabledReason then
         GameTooltip_AddErrorLine(GameTooltip, button.disabledReason)
     else
-        GameTooltip_AddNormalLine(GameTooltip, ENABLED_TOOLTIP)
+        GameTooltip_AddNormalLine(GameTooltip, L.STATUS_READY)
     end
     GameTooltip:Show()
 end
@@ -93,7 +90,7 @@ local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
     button:SetPoint("BOTTOMRIGHT", ProfessionsCustomerOrdersFrame, -20, 5)
-    button:SetText(BUTTON_LABEL)
+    button:SetText(L.BUTTON_LABEL)
     button:SetScript("OnClick", OnClick)
     button:SetScript("OnEnter", OnEnter)
     button:SetScript("OnLeave", GameTooltip_Hide)

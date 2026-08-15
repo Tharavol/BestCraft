@@ -19,8 +19,7 @@
 local ADDON_NAME, ns = ...
 
 local OrderScreen = ns.OrderScreen
-
-local LIST_NAME = "BestCraft"
+local L = ns.L
 
 function OrderScreen:IsAuctionatorAvailable()
     return Auctionator ~= nil and Auctionator.API ~= nil and Auctionator.API.v1 ~= nil
@@ -71,36 +70,35 @@ end
 ---@return string? message Set on failure, for the caller to show the player.
 function OrderScreen:CreateShoppingList()
     if not self:IsAuctionatorAvailable() then
-        return false, "Auctionator is required to build a shopping list for this order."
+        return false, L.ERROR_NO_AUCTIONATOR
     end
 
     local entries, allRequiredResolved = self:GetShoppingEntries()
     if not entries then
-        return false, "No reagents to shop for on this order."
+        return false, L.STATUS_NO_REAGENTS
     end
     if not allRequiredResolved then
-        return false,
-            "Couldn't resolve every required reagent for this order yet -- try again once all slots have a selection."
+        return false, L.STATUS_UNRESOLVED_REQUIRED
     end
     if #entries == 0 then
-        return false, "No reagents to shop for on this order."
+        return false, L.STATUS_NO_REAGENTS
     end
 
     local searchStrings = BuildSearchStrings(entries)
     if #searchStrings == 0 then
-        return false, "Couldn't resolve item names for this order's reagents yet -- try again in a moment."
+        return false, L.ERROR_UNRESOLVED_ITEM_NAMES
     end
 
     -- Matches CraftSim's own CreateAuctionatorShoppingList: delete any existing list under
     -- this name first, so repeated clicks replace rather than accumulate duplicates.
     if Auctionator.Shopping and Auctionator.Shopping.ListManager
-        and Auctionator.Shopping.ListManager:GetIndexForName(LIST_NAME) then
-        Auctionator.Shopping.ListManager:Delete(LIST_NAME)
+        and Auctionator.Shopping.ListManager:GetIndexForName(L.SHOPPING_LIST_NAME) then
+        Auctionator.Shopping.ListManager:Delete(L.SHOPPING_LIST_NAME)
     end
 
-    local ok = pcall(Auctionator.API.v1.CreateShoppingList, ADDON_NAME, LIST_NAME, searchStrings)
+    local ok = pcall(Auctionator.API.v1.CreateShoppingList, ADDON_NAME, L.SHOPPING_LIST_NAME, searchStrings)
     if not ok then
-        return false, "Couldn't create the Auctionator shopping list."
+        return false, L.ERROR_CREATE_FAILED
     end
 
     return true

@@ -1,0 +1,37 @@
+-- enUS.lua
+-- SPDX-License-Identifier: GPL-3.0-or-later
+--
+-- User-facing strings, structured for future translation even though enUS is the only locale
+-- shipped for now (issue #9). A plain ns.L table -- no CraftSim L() pattern to match against,
+-- since BestCraft no longer depends on or interoperates with CraftSim (see the
+-- CraftSim-retirement pivot, docs/craftsim-recipedata-notes.md). Loads before Core.lua and
+-- every module that shows text to the player.
+--
+-- Two messages ("no reagents to shop for", "a required reagent is unresolved") originally
+-- existed as separate near-duplicate literals in the tooltip path (OrderShoppingButton.lua)
+-- and the click-failure path (OrderShoppingList.lua) -- collapsed to single shared keys here
+-- (STATUS_NO_REAGENTS, STATUS_UNRESOLVED_REQUIRED) since they were already word-for-word
+-- identical, just typed out twice.
+
+local _, ns = ...
+
+local L = {}
+ns.L = L
+
+L.CHAT_PREFIX = "|cffff4444BestCraft|r "
+
+L.BUTTON_LABEL = "+ Shopping List"
+
+L.STATUS_READY = "Builds an Auctionator shopping list for this order's highest-quality reagents."
+L.STATUS_NO_AUCTIONATOR = "Requires Auctionator to be installed and enabled."
+L.STATUS_UNRESOLVED_REQUIRED = "Couldn't resolve every required reagent for this order yet -- "
+    .. "try again once all slots have a selection."
+L.STATUS_NO_REAGENTS = "No reagents to shop for on this order."
+
+L.ERROR_NO_AUCTIONATOR = "Auctionator is required to build a shopping list for this order."
+L.ERROR_UNRESOLVED_ITEM_NAMES = "Couldn't resolve item names for this order's reagents yet -- try again in a moment."
+L.ERROR_CREATE_FAILED = "Couldn't create the Auctionator shopping list."
+
+L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
+
+L.SHOPPING_LIST_NAME = "BestCraft"

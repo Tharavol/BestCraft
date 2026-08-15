@@ -9,6 +9,8 @@
 
 ## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and builds an Auctionator shopping list for exactly what to go buy -- for every order, recraft or not. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires Auctionator. Source and issues: https://github.com/Tharavol/BestCraft
 
+Locales/enUS.lua
+
 Core.lua
 
 Modules/OrderScreen.lua

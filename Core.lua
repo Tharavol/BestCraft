@@ -22,7 +22,7 @@ local function OnAddonLoaded(loadedAddonName)
     frame:UnregisterEvent("ADDON_LOADED")
 
     if not C_AddOns.IsAddOnLoaded("Auctionator") then
-        print("|cffff4444BestCraft|r requires Auctionator to be installed and enabled.")
+        print(ns.L.CHAT_PREFIX .. ns.L.CORE_REQUIRES_AUCTIONATOR)
         return
     end
 

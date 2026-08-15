@@ -46,3 +46,7 @@ All notable changes to the BestCraft addon are documented in this file.
 - Add a tooltip to the shopping-list button, matching this screen's own convention
   (`GameTooltip_AddNormalLine`/`AddErrorLine`, confirmed against Blizzard's client source):
   explains what it does when enabled, and why it's disabled when it isn't (#8)
+- Move every user-facing string into `Locales/enUS.lua` (a plain `ns.L` table), structured for
+  future translation even though enUS is the only locale shipped for now (#9). Along the way,
+  collapsed two pairs of near-duplicate literals that had been typed out separately in the
+  tooltip and click-failure paths but were word-for-word identical
