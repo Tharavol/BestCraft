@@ -101,6 +101,44 @@ return function(stub, T)
         T.AssertTrue(button:IsEnabled(), "expected enabled with Auctionator and reagents present")
     end)
 
+    T.Test("hides the button entirely when buttonEnabled is off, rather than graying it out", function()
+        local fakeForm = BuildFakeForm(stub)
+        fakeForm.UpdateReagentSlots = function() end
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
+        })
+        local button = loaded.frames[#loaded.frames]
+        T.AssertTrue(button:IsShown(), "sanity: shown by default")
+
+        loaded.ns.db.settings.buttonEnabled = false
+        fakeForm:UpdateReagentSlots()
+
+        T.AssertFalse(button:IsShown(), "expected hidden -- per feedback, not just disabled")
+    end)
+
+    T.Test("re-shows the button once buttonEnabled is turned back on", function()
+        local fakeForm = BuildFakeForm(stub)
+        fakeForm.UpdateReagentSlots = function() end
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
+        })
+        local button = loaded.frames[#loaded.frames]
+
+        loaded.ns.db.settings.buttonEnabled = false
+        fakeForm:UpdateReagentSlots()
+        T.AssertFalse(button:IsShown(), "sanity: hidden while off")
+
+        loaded.ns.db.settings.buttonEnabled = true
+        fakeForm:UpdateReagentSlots()
+        T.AssertTrue(button:IsShown(), "expected shown again once re-enabled")
+    end)
+
     T.Test("tooltip explains the button when enabled", function()
         local fakeForm = BuildFakeForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {

@@ -64,3 +64,7 @@ All notable changes to the BestCraft addon are documented in this file.
   optional. Same defensive `ns.db and not ...` guard as buttonEnabled, for the same
   load-order reason, and checked before touching the per-recipe "already applied" tracking so
   re-enabling mid-draft doesn't leave a recipe permanently skipped
+- Confirmed in-game and changed per feedback: turning off "Enable the order-screen shopping
+  list button" now hides the button entirely (`Hide()`/`Show()`) instead of graying it out --
+  a deliberate "don't show this" choice, unlike the other (still grayed-out-with-tooltip)
+  reasons the button can be temporarily unusable (no Auctionator, unresolved reagent)
