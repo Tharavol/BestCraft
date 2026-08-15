@@ -80,10 +80,8 @@ consistent with this.
   five entries, matching `SetupQualityDropdown`'s `ipairs(self.minQualityIDs)` loop, with
   index 1's value (4) unused for real submission purposes (`minQuality > 1` gate).
 
-## Still open
+## Confirmed end-to-end in-game
 
-- The end-to-end fix (`Modules/OrderMinimumQuality.lua`) has not been confirmed in-game --
-  only its individual building blocks (`SetMinimumQualityIndex` existing and being callable,
-  `minQualityIDs`'s shape) were. Needs an in-game smoke test: open a Guild or Personal order
-  draft for a multi-tier recipe and confirm the dropdown shows the highest tier selected
-  without manual interaction, and that switching recipes re-defaults correctly.
+`Modules/OrderMinimumQuality.lua`'s full fix (not just its individual building blocks) was
+confirmed: on a Guild/Personal order draft, the Minimum Quality dropdown now shows the
+recipe's highest tier pre-selected with no manual interaction required.
