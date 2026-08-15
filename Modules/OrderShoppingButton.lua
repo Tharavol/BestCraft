@@ -42,10 +42,33 @@ local _, ns = ...
 local OrderScreen = ns.OrderScreen
 
 local BUTTON_LABEL = "+ Shopping List"
+local ENABLED_TOOLTIP = "Builds an Auctionator shopping list for this order's highest-quality reagents."
+
+-- The same three checks RefreshButtonState uses to gate SetEnabled, but returning *why* --
+-- issue #8: this screen's other buttons all show a tooltip explaining themselves (see
+-- GameTooltip_AddNormalLine/AddErrorLine usage throughout Blizzard's own
+-- Blizzard_ProfessionsCustomerOrdersForm.lua), and this one didn't have one at all.
+---@return string? reason nil when the button is/would be enabled
+local function GetDisabledReason()
+    if not OrderScreen:IsAuctionatorAvailable() then
+        return "Requires Auctionator to be installed and enabled."
+    end
+
+    local entries, allRequiredResolved = OrderScreen:GetShoppingEntries()
+    if not allRequiredResolved then
+        return "Couldn't resolve every required reagent for this order yet -- "
+            .. "try again once all slots have a selection."
+    end
+    if not entries or #entries == 0 then
+        return "No reagents to shop for on this order."
+    end
+
+    return nil
+end
 
 local function RefreshButtonState(button)
-    local entries, allRequiredResolved = OrderScreen:GetShoppingEntries()
-    button:SetEnabled(entries ~= nil and #entries > 0 and allRequiredResolved and OrderScreen:IsAuctionatorAvailable())
+    button.disabledReason = GetDisabledReason()
+    button:SetEnabled(button.disabledReason == nil)
 end
 
 local function OnClick()
@@ -55,6 +78,16 @@ local function OnClick()
     end
 end
 
+local function OnEnter(button)
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    if button.disabledReason then
+        GameTooltip_AddErrorLine(GameTooltip, button.disabledReason)
+    else
+        GameTooltip_AddNormalLine(GameTooltip, ENABLED_TOOLTIP)
+    end
+    GameTooltip:Show()
+end
+
 ---@param form table ProfessionsCustomerOrdersFrame.Form
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
@@ -62,6 +95,8 @@ local function CreateButton(form)
     button:SetPoint("BOTTOMRIGHT", ProfessionsCustomerOrdersFrame, -20, 5)
     button:SetText(BUTTON_LABEL)
     button:SetScript("OnClick", OnClick)
+    button:SetScript("OnEnter", OnEnter)
+    button:SetScript("OnLeave", GameTooltip_Hide)
 
     local function Refresh() RefreshButtonState(button) end
 

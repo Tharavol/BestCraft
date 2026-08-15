@@ -73,6 +73,9 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
         -- itemID absent from this table returns nil, matching an item whose bind info isn't
         -- cached/known yet -- OrderReagents.lua's IsBindOnPickup fails open on that (not BoP).
         itemBindTypes = itemBindTypes or {},
+        -- Lines shown via GameTooltip_AddNormalLine/AddErrorLine since the last SetOwner,
+        -- each { kind = "Normal"|"Error", text = string }, for specs to assert tooltip content.
+        tooltipLines = {},
     }
 
     local env = setmetatable({}, { __index = _G })
@@ -103,6 +106,19 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames, itemBindTypes)
             return unpack(values, 1, 14)
         end,
     }
+    -- SetOwner clears tooltipLines (matching a real tooltip resetting its content each time
+    -- it's re-anchored), the Add*Line helpers append to it, Hide is a no-op observer.
+    env.GameTooltip = {
+        SetOwner = function() api.tooltipLines = {} end,
+        Show = function() end,
+    }
+    env.GameTooltip_AddNormalLine = function(_, text)
+        table.insert(api.tooltipLines, { kind = "Normal", text = text })
+    end
+    env.GameTooltip_AddErrorLine = function(_, text)
+        table.insert(api.tooltipLines, { kind = "Error", text = text })
+    end
+    env.GameTooltip_Hide = function() end
     -- Real values (Blizzard_APIDocumentationGenerated/ProfessionConstantsDocumentation.lua and
     -- ItemConstantsDocumentation.lua), not placeholders -- so e.g. a test's
     -- Enum.CraftingOrderType.Public matches the real client.

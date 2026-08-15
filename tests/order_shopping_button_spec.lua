@@ -101,6 +101,53 @@ return function(stub, T)
         T.AssertTrue(button:IsEnabled(), "expected enabled with Auctionator and reagents present")
     end)
 
+    T.Test("tooltip explains the button when enabled", function()
+        local fakeForm = BuildFakeForm(stub)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
+        })
+        local button = loaded.frames[#loaded.frames]
+        button:FireScript("OnEnter")
+
+        T.AssertEqual(#loaded.api.tooltipLines, 1, "expected one tooltip line")
+        T.AssertEqual(loaded.api.tooltipLines[1].kind, "Normal", "expected a Normal line, not an error")
+    end)
+
+    T.Test("tooltip explains why the button is disabled without Auctionator", function()
+        local fakeForm = BuildFakeForm(stub)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
+        })
+        local button = loaded.frames[#loaded.frames]
+        button:FireScript("OnEnter")
+
+        T.AssertEqual(#loaded.api.tooltipLines, 1, "expected one tooltip line")
+        T.AssertEqual(loaded.api.tooltipLines[1].kind, "Error", "expected an Error line")
+        T.AssertTrue(loaded.api.tooltipLines[1].text:find("Auctionator") ~= nil,
+            "expected the Auctionator-related reason")
+    end)
+
+    T.Test("tooltip explains why the button is disabled when a required reagent is unresolved", function()
+        local fakeForm = BuildFakeForm(stub, false, BuildUnresolvedSchematic)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            itemNames = { [301] = "Option A", [302] = "Option B" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
+        })
+        local button = loaded.frames[#loaded.frames]
+        button:FireScript("OnEnter")
+
+        T.AssertEqual(loaded.api.tooltipLines[1].kind, "Error", "expected an Error line")
+        T.AssertTrue(loaded.api.tooltipLines[1].text:find("required") ~= nil,
+            "expected the unresolved-required-reagent reason")
+    end)
+
     T.Test("clicking the button creates a shopping list", function()
         local fakeForm = BuildFakeForm(stub)
         local createCalls = {}

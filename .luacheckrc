@@ -17,6 +17,10 @@ read_globals = {
     "C_TradeSkillUI",
     "CreateFrame",
     "Enum",
+    "GameTooltip",
+    "GameTooltip_AddErrorLine",
+    "GameTooltip_AddNormalLine",
+    "GameTooltip_Hide",
     "hooksecurefunc",
 
     -- Blizzard's load-on-demand Crafting Orders customer frame. See

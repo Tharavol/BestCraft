@@ -43,3 +43,6 @@ All notable changes to the BestCraft addon are documented in this file.
   Neither exclusion blocks the button/shopping list over what remains resolvable
 - Relicensed from MIT to GPL-3.0-or-later, now that CraftSim (MIT-licensed) is no longer a
   dependency or a source of any code this addon builds on
+- Add a tooltip to the shopping-list button, matching this screen's own convention
+  (`GameTooltip_AddNormalLine`/`AddErrorLine`, confirmed against Blizzard's client source):
+  explains what it does when enabled, and why it's disabled when it isn't (#8)
