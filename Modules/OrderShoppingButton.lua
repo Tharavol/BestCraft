@@ -50,7 +50,7 @@ end
 local function CreateButton(form)
     local button = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
     button:SetSize(110, 22)
-    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -29)
+    button:SetPoint("TOP", form.PaymentContainer.ListOrderButton, "BOTTOM", 0, -28)
     button:SetText(BUTTON_LABEL)
     button:SetScript("OnClick", OnClick)
 
