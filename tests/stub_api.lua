@@ -1,5 +1,5 @@
 -- stub_api.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Stubs the slice of the WoW API this addon touches, then loads the addon's Lua files
 -- (in the order BestCraft.toc lists them) into a fresh, isolated environment per call so

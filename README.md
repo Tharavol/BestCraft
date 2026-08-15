@@ -26,3 +26,7 @@ Core feature working end-to-end (normal and recraft orders both, via a single Au
 Credits
 -------
 Interoperates with [Auctionator](https://www.curseforge.com/wow/addons/auctionator) via its public API. Earlier versions queued normal orders into [CraftSim](https://github.com/derfloh205/CraftSim)'s CraftQueue instead of building a shopping list directly; that approach was retired (see `docs/craftsim-recipedata-notes.md`), and CraftSim is no longer a dependency.
+
+License
+-------
+GPL-3.0-or-later. See [LICENSE](LICENSE).

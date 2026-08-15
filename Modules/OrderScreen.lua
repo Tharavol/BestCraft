@@ -1,5 +1,5 @@
 -- OrderScreen.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Hooks the load of Blizzard's load-on-demand Crafting Orders customer frame
 -- (ProfessionsCustomerOrdersFrame), so later milestones have a safe, confirmed point to

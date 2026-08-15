@@ -1,5 +1,5 @@
 -- validate-toc.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Checks the .toc against the files on disk. A TOC that lists a file which doesn't
 -- exist -- or exists under a different case -- fails silently in-game: WoW loads the

@@ -1,5 +1,5 @@
 -- OrderMinimumQuality.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Defaults the order screen's "Minimum Quality" dropdown to the recipe's highest available
 -- tier, once per recipe per draft, so the crafter is required to deliver best quality by

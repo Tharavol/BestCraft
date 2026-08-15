@@ -1,5 +1,5 @@
 -- OrderReagents.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Picks the highest-quality reagent for each slot on the order screen's recipe schematic,
 -- with no independent optimization -- see docs/order-screen-research.md for how this shape

@@ -1,5 +1,5 @@
 -- run_tests.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Loads the addon into a stubbed WoW API (stub_api.lua) and runs the regression suite in
 -- the sibling *_spec.lua files. Catches runtime shape errors luacheck cannot -- a nil

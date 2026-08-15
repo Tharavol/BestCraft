@@ -1,5 +1,5 @@
 -- order_screen_spec.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- fakeForm uses stub.MakeFrame(), not a bare {}: once OrderShoppingButton.lua joins the toc,
 -- every OrderScreen.form assignment also triggers button creation against it (OnFormFound

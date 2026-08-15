@@ -41,3 +41,5 @@ All notable changes to the BestCraft addon are documented in this file.
   in-game against a real order: "Fused Vitality" was Customer-sourced (so the orderSource
   check alone missed it) but returned zero Auctionator search results -- it's simply BoP.
   Neither exclusion blocks the button/shopping list over what remains resolvable
+- Relicensed from MIT to GPL-3.0-or-later, now that CraftSim (MIT-licensed) is no longer a
+  dependency or a source of any code this addon builds on

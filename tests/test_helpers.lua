@@ -1,5 +1,5 @@
 -- test_helpers.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- A minimal, dependency-free test runner: no rock beyond the luacheck one CI already
 -- installs. Spec files call M.Test(name, fn); fn raises (via M.AssertEqual etc.) to fail.

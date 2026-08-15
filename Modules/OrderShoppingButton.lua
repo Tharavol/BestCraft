@@ -1,5 +1,5 @@
 -- OrderShoppingButton.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Adds a "+ Shopping List" button to the order screen for every order (recraft or not), via
 -- OrderShoppingList.lua. Originally two modes -- normal orders queued into CraftSim.CRAFTQ,

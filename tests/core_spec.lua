@@ -1,5 +1,5 @@
 -- core_spec.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 
 return function(stub, T)
     T.Test("sets ns.ready when Auctionator is loaded", function()

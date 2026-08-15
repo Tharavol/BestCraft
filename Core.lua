@@ -1,5 +1,5 @@
 -- Core.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Entry point. Confirms Auctionator is present -- this addon has nothing to do without it,
 -- since every order (recraft or not) is handled by building an Auctionator shopping list --

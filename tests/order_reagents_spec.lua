@@ -1,5 +1,5 @@
 -- order_reagents_spec.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 
 -- Mirrors stub_api.lua's env.Enum.CraftingOrderReagentSource / env.Enum.ItemBind -- this file
 -- runs outside the addon's sandboxed environment, so it needs its own copy rather than

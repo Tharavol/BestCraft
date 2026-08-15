@@ -1,5 +1,5 @@
 -- order_shopping_list_spec.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 
 local function BuildFakeForm(stub, schematic)
     local form = stub.MakeFrame()

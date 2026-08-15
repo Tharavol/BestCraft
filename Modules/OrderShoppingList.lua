@@ -1,5 +1,5 @@
 -- OrderShoppingList.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Builds an Auctionator shopping list for the order screen's current recipe -- every order,
 -- not just recraft ones. Originally recraft-only: CraftSim.CRAFTQ:IsRecipeQueueable explicitly

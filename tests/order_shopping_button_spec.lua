@@ -1,5 +1,5 @@
 -- order_shopping_button_spec.lua
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 --
 -- Tests BestCraft's own glue (button creation/anchoring, enabled-state gating, the click
 -- handler's call into OrderShoppingList.lua) against a mocked Auctionator.API.v1. One path for
