@@ -17,3 +17,4 @@ Modules/OrderReagents.lua
 Modules/OrderRecipeData.lua
 Modules/RecraftShoppingList.lua
 Modules/OrderQueueButton.lua
+Modules/OrderMinimumQuality.lua

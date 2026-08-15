@@ -91,6 +91,11 @@ local function NewEnv(addonsLoaded, reagentQualities, itemNames)
     env.C_Item = {
         GetItemInfo = function(itemID) return api.itemNames[itemID] end,
     }
+    -- Real values (Blizzard_APIDocumentationGenerated/ProfessionConstantsDocumentation.lua),
+    -- not placeholders -- so a test's Enum.CraftingOrderType.Public matches the real client.
+    env.Enum = {
+        CraftingOrderType = { Public = 0, Guild = 1, Personal = 2, Npc = 3 },
+    }
     -- Table+methodName variant only -- the addon never hooks a bare global function.
     env.hooksecurefunc = function(tbl, name, hookFn)
         local original = tbl[name]

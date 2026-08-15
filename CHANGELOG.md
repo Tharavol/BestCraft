@@ -24,3 +24,8 @@ All notable changes to the BestCraft addon are documented in this file.
   message rather than handing back an incomplete recipeData/shopping list (#4). The native
   "Use Best Quality Reagents" checkbox itself needs no handling: BestCraft never reads it,
   always computing quality directly from the schematic regardless of its state
+- Default the order's Minimum Quality dropdown to the recipe's highest real tier
+  (`#Form.minQualityIDs`, index 1 being a "None" placeholder) on Guild and Personal orders,
+  once per recipe per draft so a manual change back to None isn't re-stomped by a
+  reagent-only refresh (#17). Public orders are deliberately left alone -- Blizzard hides the
+  dropdown for them and always submits `minCraftingQualityID = 0` regardless
