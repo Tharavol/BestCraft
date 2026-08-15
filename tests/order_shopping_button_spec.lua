@@ -139,6 +139,31 @@ return function(stub, T)
         T.AssertTrue(button:IsShown(), "expected shown again once re-enabled")
     end)
 
+    T.Test("unchecking buttonEnabled in the options panel hides the button immediately", function()
+        -- No fakeForm.UpdateReagentSlots hook here, deliberately -- confirmed in-game that the
+        -- button didn't update until the order window was closed and reopened, i.e. the order
+        -- screen's own OnShow/UpdateReagentSlots events (which this test never fires) weren't
+        -- what was supposed to drive this refresh in the first place.
+        local fakeForm = BuildFakeForm(stub)
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true, Blizzard_ProfessionsCustomerOrders = true },
+            reagentQualities = { [111] = 2 },
+            itemNames = { [111] = "Some Reagent" },
+            presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
+        })
+        local button = loaded.frames[#loaded.frames]
+        T.AssertTrue(button:IsShown(), "sanity: shown by default")
+
+        local checkbox
+        for _, entry in ipairs(loaded.ns.Options.panel.checkboxes) do
+            if entry.key == "buttonEnabled" then checkbox = entry.checkbox end
+        end
+        checkbox:SetChecked(false)
+        checkbox:FireScript("OnClick")
+
+        T.AssertFalse(button:IsShown(), "expected the options-panel checkbox to hide the button directly")
+    end)
+
     T.Test("tooltip explains the button when enabled", function()
         local fakeForm = BuildFakeForm(stub)
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {

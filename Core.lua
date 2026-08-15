@@ -85,6 +85,11 @@ function ns.ResetToDefaults()
     if ns.Options and ns.Options.RefreshWidgets then
         ns.Options:RefreshWidgets()
     end
+    -- Immediate, not just on the button's own next natural refresh -- buttonEnabled is one of
+    -- the settings reset resets, and the order window may already be open.
+    if ns.RefreshShoppingButton then
+        ns.RefreshShoppingButton()
+    end
     ns.Print(L.CMD_SETTINGS_RESET)
 end
 

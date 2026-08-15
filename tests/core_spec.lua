@@ -69,6 +69,23 @@ return function(stub, T)
         T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected maxQualityEnabled reset to its default")
     end)
 
+    T.Test("ns.ResetToDefaults refreshes the order-screen button live, if it exists", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        local refreshCalls = 0
+        loaded.ns.RefreshShoppingButton = function() refreshCalls = refreshCalls + 1 end
+
+        loaded.ns.ResetToDefaults()
+
+        T.AssertEqual(refreshCalls, 1, "expected ResetToDefaults to call the exposed refresh hook")
+    end)
+
+    T.Test("ns.ResetToDefaults doesn't error when the button was never created", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        T.AssertEqual(loaded.ns.RefreshShoppingButton, nil, "sanity: no button, no hook")
+        loaded.ns.ResetToDefaults() -- must not error
+        T.AssertTrue(true, "expected no error")
+    end)
+
     T.Test("prints a login message only when ready and printOnLogin is set", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         loaded.ns.db.settings.printOnLogin = true

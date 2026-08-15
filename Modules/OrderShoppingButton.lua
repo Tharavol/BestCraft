@@ -113,6 +113,13 @@ local function CreateButton(form)
 
     local function Refresh() RefreshButtonState(button) end
 
+    -- Exposed so Options.lua's buttonEnabled checkbox and Core.lua's ResetToDefaults can push
+    -- an immediate refresh when the setting changes while the order window is already open --
+    -- otherwise the button only re-evaluates on the order screen's own OnShow/UpdateReagentSlots
+    -- events, which don't fire just because a setting changed elsewhere (confirmed in-game:
+    -- toggling the option didn't take effect until the window was closed and reopened).
+    ns.RefreshShoppingButton = Refresh
+
     form:HookScript("OnShow", Refresh)
     -- The order screen doesn't fire a change event when the player picks a different
     -- recipe or reagent allocation -- UpdateReagentSlots is what it calls internally on

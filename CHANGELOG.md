@@ -68,3 +68,9 @@ All notable changes to the BestCraft addon are documented in this file.
   list button" now hides the button entirely (`Hide()`/`Show()`) instead of graying it out --
   a deliberate "don't show this" choice, unlike the other (still grayed-out-with-tooltip)
   reasons the button can be temporarily unusable (no Auctionator, unresolved reagent)
+- Toggling "Enable the order-screen shopping list button" (or running `/bestcraft reset`) now
+  shows/hides the button immediately if the order window is already open, rather than only
+  taking effect the next time it's closed and reopened -- confirmed in-game that the button
+  didn't update live, since it only re-evaluated on the order screen's own OnShow/
+  UpdateReagentSlots events, neither of which fires just because a setting changed elsewhere.
+  `ns.RefreshShoppingButton` exposes the button's own refresh function for exactly this

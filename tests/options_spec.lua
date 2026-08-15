@@ -35,6 +35,26 @@ return function(stub, T)
         T.AssertFalse(loaded.ns.db.settings.buttonEnabled, "expected the setting to follow the checkbox")
     end)
 
+    T.Test("clicking the buttonEnabled checkbox calls ns.RefreshShoppingButton, if it exists", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        local refreshCalls = 0
+        loaded.ns.RefreshShoppingButton = function() refreshCalls = refreshCalls + 1 end
+        local checkbox = FindCheckbox(loaded, "buttonEnabled")
+
+        checkbox:SetChecked(false)
+        checkbox:FireScript("OnClick")
+
+        T.AssertEqual(refreshCalls, 1, "expected the live-refresh hook called once")
+    end)
+
+    T.Test("clicking a checkbox with no onChange doesn't error", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        local checkbox = FindCheckbox(loaded, "printOnLogin")
+        checkbox:SetChecked(true)
+        checkbox:FireScript("OnClick") -- must not error
+        T.AssertTrue(loaded.ns.db.settings.printOnLogin, "expected the setting to still follow the checkbox")
+    end)
+
     T.Test("RefreshWidgets syncs checkboxes from ns.db.settings", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
         loaded.ns.db.settings.printOnLogin = true

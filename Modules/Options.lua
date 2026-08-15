@@ -5,7 +5,12 @@
 -- conventions rather than inventing a new one: Settings.RegisterCanvasLayoutCategory +
 -- Settings.RegisterAddOnCategory, a CHECKBOXES table Commands.lua's `status` reuses so the
 -- two entry points can't list different settings under different labels. Thin by design --
--- there's no tunable optimization behavior in this addon, just two on/off settings.
+-- there's no tunable optimization behavior in this addon, just a handful of on/off settings.
+-- A definition's optional `onChange` (matching Crosshairs' own AddCheckbox(label, tooltip,
+-- dbKey, onChange) signature) fires after the setting is written, for a setting whose effect
+-- needs to be visible immediately rather than waiting for its own next natural refresh --
+-- confirmed in-game that buttonEnabled needed this: toggling it didn't take effect until the
+-- order window was closed and reopened.
 
 local _, ns = ...
 
@@ -21,6 +26,9 @@ local CHECKBOXES = {
         key = "buttonEnabled",
         label = L.OPTIONS_BUTTON_ENABLED_LABEL,
         tooltip = L.OPTIONS_BUTTON_ENABLED_TOOLTIP,
+        onChange = function()
+            if ns.RefreshShoppingButton then ns.RefreshShoppingButton() end
+        end,
     },
     {
         key = "printOnLogin",
@@ -57,6 +65,7 @@ local function CreatePanel()
         checkbox.tooltipRequirement = definition.tooltip
         checkbox:SetScript("OnClick", function(self)
             ns.db.settings[definition.key] = self:GetChecked() and true or false
+            if definition.onChange then definition.onChange() end
         end)
         checkboxes[#checkboxes + 1] = { checkbox = checkbox, key = definition.key }
         anchor = checkbox
