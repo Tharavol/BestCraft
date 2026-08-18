@@ -76,11 +76,10 @@ return function(stub, T)
             T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality reagent")
         end)
 
-    T.Test("GetShoppingEntries prefers highest quality when minQualityIDs isn't known yet", function()
-        -- Not the same as "confirmed no real tier" (length <= 1) -- nil means we simply don't
-        -- know yet (a load-order edge case), and defaulting to lowest quality in that case
-        -- would risk silently under-quality-ing a genuinely ranked recipe. Highest is the
-        -- safer default when uncertain.
+    T.Test("GetShoppingEntries prefers lowest quality when minQualityIDs is nil", function()
+        -- Confirmed in-game (issue #19) that C_TradeSkillUI.GetQualitiesForRecipe returns nil,
+        -- not a length-1 table, for a recipe with no real quality tier -- nil means "confirmed
+        -- no tier," the same as length <= 1, not "not yet known."
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { Auctionator = true },
             reagentQualities = { [201] = 2, [202] = 3 },
@@ -91,7 +90,7 @@ return function(stub, T)
 
         local entries = loaded.ns.OrderScreen:GetShoppingEntries()
 
-        T.AssertEqual(entries[1].itemID, 202, "expected the higher-quality reagent -- safe default")
+        T.AssertEqual(entries[1].itemID, 201, "expected the lower-quality reagent")
     end)
 
     T.Test("CreateShoppingList fails with a message when Auctionator isn't available", function()
@@ -237,6 +236,61 @@ return function(stub, T)
 
             T.AssertTrue(ok, "expected success")
             T.AssertTrue(message ~= nil and message ~= "", "expected a message even without a recipe name")
+        end)
+
+    T.Test("CreateShoppingList's success message notes vendor-purchasable reagents skipped", function()
+        local schematic = {
+            name = "Thalassian Treatise on Enchanting",
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 111 } } },
+                { dataSlotIndex = 2, required = true, quantityRequired = 1, reagents = { { itemID = 245881 } } },
+            },
+        }
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality", [245881] = "Lexicologist's Vellum" },
+            itemTooltipLines = {
+                [245881] = { "Lexicologist's Vellum", "Crafting Reagent",
+                    "A parchment frequently used by Scribes. Can be purchased from vendors." },
+            },
+            presetGlobals = {
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function() end,
+                } } },
+            },
+        })
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic)
+
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
+
+        T.AssertTrue(ok, "expected success -- the non-vendor reagent still has an entry")
+        T.AssertTrue(message:find("Fused Vitality", 1, true) ~= nil, "expected the shopped reagent named")
+        T.AssertTrue(message:find("Skipped Lexicologist's Vellum", 1, true) ~= nil,
+            "expected the vendor-skipped reagent named and why")
+    end)
+
+    T.Test("CreateShoppingList fails with a vendor-skip note when the only reagent is vendor-purchasable",
+        function()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                itemTooltipLines = {
+                    [245881] = { "Lexicologist's Vellum", "Crafting Reagent",
+                        "A parchment frequently used by Scribes. Can be purchased from vendors." },
+                },
+                presetGlobals = { Auctionator = { API = { v1 = {} } } },
+            })
+            loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+                reagentSlotSchematics = {
+                    { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 245881 } } },
+                },
+            })
+
+            local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
+
+            T.AssertFalse(ok, "expected failure -- nothing left to shop for")
+            T.AssertTrue(message ~= nil and message:find("Skipped", 1, true) ~= nil,
+                "expected the vendor-skip reason even though the list itself is empty")
         end)
 
     T.Test("CreateShoppingList deletes an existing list under the same name first", function()

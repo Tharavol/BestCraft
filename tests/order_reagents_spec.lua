@@ -239,4 +239,110 @@ return function(stub, T)
         local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 1, "expected the reagent included -- unknown bind status isn't treated as BoP")
     end)
+
+    T.Test("excludes a vendor-purchasable reagent, reporting it in excludedForVendor", function()
+        -- Matches the real bug (issue #20): "Lexicologist's Vellum" was Customer-sourced,
+        -- required, and had real AH listings -- only its tooltip flavor text ("Can be
+        -- purchased from vendors.") distinguished it from the recipe's other, genuinely
+        -- AH-only reagents.
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemTooltipLines = {
+                [245881] = { "Lexicologist's Vellum", "Crafting Reagent",
+                    "A parchment frequently used by Scribes. Can be purchased from vendors." },
+            },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 245881 } } },
+                { dataSlotIndex = 2, required = true, quantityRequired = 1, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries, allRequiredResolved, excludedForVendor =
+            loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected only the non-vendor reagent's entry")
+        T.AssertEqual(entries[1].itemID, 111, "expected the AH-only reagent kept")
+        T.AssertTrue(allRequiredResolved,
+            "expected true -- a vendor-purchasable reagent was deliberately excluded, not unresolved")
+        T.AssertEqual(#excludedForVendor, 1, "expected one excluded itemID")
+        T.AssertEqual(excludedForVendor[1], 245881, "expected the vendor-purchasable itemID reported")
+    end)
+
+    T.Test("includes a reagent whose tooltip mentions the Auction House but not a vendor", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemTooltipLines = {
+                [245801] = { "Munsell Ink", "Crafting Reagent",
+                    "A cool ink crafted by players with the Inscription skill. "
+                        .. "Can be bought and sold on the Auction House." },
+            },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 245801 } } },
+            },
+        }
+        local entries, _, excludedForVendor = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected the AH-only reagent included")
+        T.AssertEqual(#excludedForVendor, 0, "expected nothing excluded")
+    end)
+
+    T.Test("excludes a reagent Auctionator's own vendor-price API reports, even with no matching tooltip text",
+        function()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                presetGlobals = {
+                    Auctionator = { API = { v1 = {
+                        GetVendorPriceByItemID = function(_, itemID)
+                            if itemID == 245881 then return 421 end
+                            return nil
+                        end,
+                    } } },
+                },
+            })
+            local schematicInfo = {
+                reagentSlotSchematics = {
+                    { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 245881 } } },
+                },
+            }
+            local entries, _, excludedForVendor = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+            T.AssertEqual(#entries, 0, "expected the reagent excluded on Auctionator's own vendor price alone")
+            T.AssertEqual(#excludedForVendor, 1, "expected one excluded itemID")
+        end)
+
+    T.Test("falls back to the tooltip scan when Auctionator's vendor-price API has no answer", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemTooltipLines = {
+                [245881] = { "Lexicologist's Vellum", "Crafting Reagent",
+                    "A parchment frequently used by Scribes. Can be purchased from vendors." },
+            },
+            presetGlobals = {
+                Auctionator = { API = { v1 = {
+                    GetVendorPriceByItemID = function() return nil end,
+                } } },
+            },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 245881 } } },
+            },
+        }
+        local entries, _, excludedForVendor = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected the reagent excluded via the tooltip fallback")
+        T.AssertEqual(#excludedForVendor, 1, "expected one excluded itemID")
+    end)
+
+    T.Test("includes a reagent whose tooltip isn't cached yet (fails open, not vendor-flagged)", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 1, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries, _, excludedForVendor = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1,
+            "expected the reagent included -- unknown tooltip status isn't treated as vendor-purchasable")
+        T.AssertEqual(#excludedForVendor, 0, "expected nothing excluded")
+    end)
 end

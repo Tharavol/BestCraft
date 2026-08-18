@@ -86,3 +86,21 @@ All notable changes to the BestCraft addon are documented in this file.
   *not* merely when it isn't known yet, which stays on the historical highest-quality default
   as the safer failure mode. `GetBestQualityReagentEntries` renamed to `GetChosenReagentEntries`
   to keep the name honest now that "best" doesn't always mean highest
+- Fixed: the lowest-quality-reagent preference above never actually triggered for a genuinely
+  unranked recipe on a Public order (issue #19) -- `C_TradeSkillUI.GetQualitiesForRecipe`
+  confirmed in-game to return `nil` outright for a recipe with no quality tiers, not a
+  length-1 table, so the old `minQualityIDs ~= nil and #minQualityIDs <= 1` guard silently fell
+  through to the highest-quality default on exactly the recipes it was meant to catch. `nil` is
+  now treated the same as "confirmed no real tier"
+- Exclude reagents that are cheaply available from an NPC vendor from the shopping list, with a
+  chat note explaining what was skipped and why (issue #20) -- confirmed in-game that
+  Auctionator can find real AH listings for these too, but paying that price is pointless when
+  a vendor sells the same item directly for less. No client API answers "is this vendor-sold"
+  directly (`sellPrice` is what a vendor *pays you*, not evidence a vendor *sells* it, and
+  item class/subclass/bindType/orderSource all came back identical between a real vendor-sold
+  reagent and the recipe's other, genuinely AH-only ones) -- detected instead via
+  `Auctionator.API.v1.GetVendorPriceByItemID` (Auctionator's own maintained vendor-price
+  database, the same data behind its "cheaper than vendor" AH tags), falling back to
+  `C_TooltipInfo.GetItemByID` and scanning for "vendor" in the item's own flavor text for
+  whatever that database doesn't cover (Blizzard's own tooltip says "Can be purchased from
+  vendors." for these, confirmed side-by-side against an AH-only reagent from the same recipe)

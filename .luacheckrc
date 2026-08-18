@@ -24,6 +24,7 @@ globals = {
 read_globals = {
     "C_AddOns",
     "C_Item",
+    "C_TooltipInfo",
     "C_TradeSkillUI",
     "CreateFrame",
     "Enum",

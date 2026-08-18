@@ -19,7 +19,7 @@
 -- checkbox is set to -- the checkbox being off doesn't change anything here, there's no
 -- unresolved case to handle for it.
 
-local _, ns = ...
+local ADDON_NAME, ns = ...
 
 local OrderScreen = ns.OrderScreen
 
@@ -77,21 +77,64 @@ local function IsBindOnPickup(itemID)
     return bindType == Enum.ItemBind.OnAcquire
 end
 
+-- Some reagents are cheaply available from an NPC vendor even though Auctionator can also find
+-- AH listings for them -- confirmed in-game against a real order (issue #20): "Lexicologist's
+-- Vellum" had 39s+ AH listings, but paying that is pointless when a vendor sells it directly
+-- for less. sellPrice (what a vendor *pays you*) doesn't tell you this, and class/subclass/
+-- bindType/orderSource all came back identical between it and the recipe's other, genuinely
+-- AH-only reagents when compared side-by-side -- none of those are usable signals.
+--
+-- Two signals, tried in order:
+-- 1. Auctionator.API.v1.GetVendorPriceByItemID -- Auctionator's own maintained vendor-price
+--    database (the same data behind its "cheaper than vendor" AH tags; confirmed via
+--    CraftSim's use of it, CraftSim/DataSource/PriceAPIs.lua:185). Authoritative when it has
+--    an answer, but only covers items that database actually knows about, so it's not relied
+--    on alone.
+-- 2. Tooltip flavor-text scan, as a fallback for whatever #1 doesn't cover -- confirmed by
+--    comparing tooltip text side-by-side for a real vendor-sold and a real AH-only reagent
+--    from the same recipe: Blizzard's own flavor text says "Can be purchased from vendors."
+--    for the former, "Can be bought and sold on the Auction House." for the latter. Read via
+--    C_TooltipInfo (not a live GameTooltip widget, which needs a real frame to anchor to),
+--    scanning every line for "vendor" rather than matching the flavor text verbatim, since the
+--    exact wording isn't a documented contract -- just the two samples actually seen.
+local function IsVendorPurchasable(itemID)
+    if Auctionator and Auctionator.API and Auctionator.API.v1 and Auctionator.API.v1.GetVendorPriceByItemID then
+        local ok, vendorPrice = pcall(Auctionator.API.v1.GetVendorPriceByItemID, ADDON_NAME, itemID)
+        if ok and vendorPrice then
+            return true
+        end
+    end
+
+    local ok, info = pcall(C_TooltipInfo.GetItemByID, itemID)
+    if not ok or not info or not info.lines then
+        return false
+    end
+    for _, line in ipairs(info.lines) do
+        if line.leftText and line.leftText:lower():find("vendor", 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
 -- schematic's reagent slots, choosing one item per slot and its full required quantity. Slots
 -- with no confident choice are omitted, not guessed. OrderShoppingList.lua reshapes this into
 -- Auctionator search strings.
 --
--- Two separate reasons a slot can be excluded, both confirmed in-game against real orders:
+-- Three separate reasons a slot can be excluded, all confirmed in-game against real orders:
 -- 1. orderSource == Enum.CraftingOrderReagentSource.Crafter -- Blizzard's own client source
 --    (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT) says these are reagents the *crafter* must
 --    personally provide, not something the customer placing the order is meant to supply.
 -- 2. The resolved item is bind-on-pickup (see IsBindOnPickup) -- can't be bought regardless of
 --    who's meant to provide it, Customer-sourced or not (this is what actually caught "Fused
 --    Vitality"; its orderSource was Customer, not Crafter, so #1 alone didn't cover it).
--- Neither kind of exclusion counts against allRequiredResolved below -- neither was ever
--- something the customer's shopping list could resolve in the first place, unlike a genuinely
--- unresolved quality pick.
+-- 3. The resolved item is vendor-purchasable (see IsVendorPurchasable) -- technically buyable
+--    on the AH too, but pointlessly expensive there, so it's reported back separately rather
+--    than silently dropped (see excludedForVendor below).
+-- None of these exclusions count against allRequiredResolved below -- none was ever something
+-- the customer's shopping list should resolve via the AH in the first place, unlike a
+-- genuinely unresolved quality pick.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
 ---@param preferLowestQuality boolean? True picks the cheapest ranked reagent per slot instead
 ---   of the priciest -- for recipes whose output has no quality tiers to benefit from a
@@ -104,13 +147,21 @@ end
 ---   so callers should refuse to act (rather than proceed) when this is false. Unresolved
 ---   *optional* slots (required == false) don't affect this -- they're expected to be
 ---   skippable.
+---@return table excludedForVendor itemIDs left off the list because IsVendorPurchasable was
+---   true -- callers should tell the player what was skipped and why (issue #20), rather than
+---   silently shrinking the list with no explanation.
 function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
     local entries = {}
+    local excludedForVendor = {}
     local allRequiredResolved = true
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
         if slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
             local itemID = PickReagent(slot, preferLowestQuality)
-            if itemID and not IsBindOnPickup(itemID) then
+            -- Checked before IsBindOnPickup below: an item could in principle be both, and a
+            -- vendor exclusion is the more informative one to report back to the player.
+            if itemID and IsVendorPurchasable(itemID) then
+                table.insert(excludedForVendor, itemID)
+            elseif itemID and not IsBindOnPickup(itemID) then
                 table.insert(entries, {
                     itemID = itemID,
                     quantity = slot.quantityRequired,
@@ -122,5 +173,5 @@ function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
             end
         end
     end
-    return entries, allRequiredResolved
+    return entries, allRequiredResolved, excludedForVendor
 end

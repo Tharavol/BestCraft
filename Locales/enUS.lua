@@ -37,6 +37,12 @@ L.ERROR_CREATE_FAILED = "Couldn't create the Auctionator shopping list."
 L.CHAT_LIST_CREATED = "Shopping list ready for \"%s\": %s"
 L.CHAT_UNKNOWN_RECIPE = "this order"
 
+-- Issue #20: reagents cheaply available from an NPC vendor are left off the shopping list
+-- entirely rather than shopped for on the AH -- this explains why the list came up short.
+-- %s = comma-joined item names. Appended straight onto CHAT_LIST_CREATED/STATUS_NO_REAGENTS,
+-- so it leads with its own space rather than the caller adding one.
+L.CHAT_SKIPPED_VENDOR = " Skipped %s -- available from a vendor."
+
 L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
 L.CORE_LOGIN_MESSAGE = "%s loaded. |cffaaaaaa/bestcraft|r for options."
 

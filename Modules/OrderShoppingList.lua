@@ -35,11 +35,13 @@ end
 -- nothing there, since the crafted result can't rank up regardless. Detected via
 -- Form.minQualityIDs, the same per-recipe data issue #17's Minimum Quality default already
 -- reads (index 1 is a "None" placeholder, not a real tier -- see
--- docs/minimum-quality-notes.md -- so #minQualityIDs <= 1 means no real tier exists at all).
+-- docs/minimum-quality-notes.md -- so #minQualityIDs <= 1 means no real tier exists at all;
+-- nil means the same thing, not "not yet known" -- see GetShoppingEntries below, issue #19).
 ---@return table? entries
 ---@return boolean? allRequiredResolved See OrderReagents.lua's GetChosenReagentEntries.
 ---   nil (not false) when entries itself is nil -- there's nothing to qualify.
 ---@return string? recipeName schematicInfo.name, for the chat confirmation on success.
+---@return table? excludedForVendor See OrderReagents.lua's GetChosenReagentEntries.
 function OrderScreen:GetShoppingEntries()
     local form = self.form
     local transaction = form and form.transaction
@@ -52,17 +54,23 @@ function OrderScreen:GetShoppingEntries()
         return nil
     end
 
-    -- Only when minQualityIDs is confirmed present with no real tier (see the header comment)
-    -- -- NOT merely when it's nil/not-yet-known (a load-order edge case OrderMinimumQuality.lua
-    -- also has to guard against). Preferring lowest quality by default whenever this data
-    -- simply isn't ready yet would risk silently under-quality-ing a genuinely ranked recipe;
-    -- staying with the historical highest-quality default when uncertain just costs a bit more
-    -- on an unranked one instead -- the safer failure mode of the two.
+    -- nil means "no real tier," not "not yet known" -- confirmed in-game against a real
+    -- Public order (issue #19, "Thalassian Treatise on Enchanting"): Blizzard's own
+    -- `self.minQualityIDs = recipeID and C_TradeSkillUI.GetQualitiesForRecipe(recipeID)` (see
+    -- OrderMinimumQuality.lua's header comment) runs unconditionally once a recipe is loaded,
+    -- independent of order type, so by the time GetShoppingEntries runs (a recipe/transaction
+    -- already resolved -- see the guard above) this has already settled one way or the other.
+    -- A prior version of this check required minQualityIDs to be non-nil with length <= 1,
+    -- reasoning nil might mean "not loaded yet" -- but GetQualitiesForRecipe genuinely returns
+    -- nil (not an empty/length-1 table) for a recipe with no quality tiers at all, so that
+    -- version silently fell through to the highest-quality default on exactly the recipes this
+    -- was meant to catch.
     local minQualityIDs = form.minQualityIDs
-    local preferLowestQuality = minQualityIDs ~= nil and #minQualityIDs <= 1
+    local preferLowestQuality = minQualityIDs == nil or #minQualityIDs <= 1
 
-    local entries, allRequiredResolved = self:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
-    return entries, allRequiredResolved, schematicInfo.name
+    local entries, allRequiredResolved, excludedForVendor =
+        self:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
+    return entries, allRequiredResolved, schematicInfo.name, excludedForVendor
 end
 
 -- Builds Auctionator search strings and a parallel "Name [xN], Name [xN], ..." human-readable
@@ -91,15 +99,31 @@ local function BuildSearchStringsAndSummary(entries)
     return searchStrings, table.concat(summaryParts, ", ")
 end
 
+-- Names every vendor-excluded itemID (issue #20) for the chat note explaining why the list is
+-- shorter than the recipe's full reagent count -- "" when nothing was excluded, so callers can
+-- append it unconditionally without an extra branch.
+---@return string note
+local function BuildVendorSkippedNote(excludedForVendor)
+    if not excludedForVendor or #excludedForVendor == 0 then
+        return ""
+    end
+    local names = {}
+    for _, itemID in ipairs(excludedForVendor) do
+        table.insert(names, C_Item.GetItemInfo(itemID) or ("item " .. itemID))
+    end
+    return L.CHAT_SKIPPED_VENDOR:format(table.concat(names, ", "))
+end
+
 ---@return boolean success
 ---@return string? message On failure, why. On success, a chat-ready confirmation of the
----   recipe and materials added (issue feedback: the player asked what was added and why).
+---   recipe and materials added (issue feedback: the player asked what was added and why),
+---   plus a note of anything skipped as vendor-purchasable (issue #20).
 function OrderScreen:CreateShoppingList()
     if not self:IsAuctionatorAvailable() then
         return false, L.ERROR_NO_AUCTIONATOR
     end
 
-    local entries, allRequiredResolved, recipeName = self:GetShoppingEntries()
+    local entries, allRequiredResolved, recipeName, excludedForVendor = self:GetShoppingEntries()
     if not entries then
         return false, L.STATUS_NO_REAGENTS
     end
@@ -107,7 +131,7 @@ function OrderScreen:CreateShoppingList()
         return false, L.STATUS_UNRESOLVED_REQUIRED
     end
     if #entries == 0 then
-        return false, L.STATUS_NO_REAGENTS
+        return false, L.STATUS_NO_REAGENTS .. BuildVendorSkippedNote(excludedForVendor)
     end
 
     local searchStrings, summary = BuildSearchStringsAndSummary(entries)
@@ -127,5 +151,6 @@ function OrderScreen:CreateShoppingList()
         return false, L.ERROR_CREATE_FAILED
     end
 
-    return true, L.CHAT_LIST_CREATED:format(recipeName or L.CHAT_UNKNOWN_RECIPE, summary)
+    local message = L.CHAT_LIST_CREATED:format(recipeName or L.CHAT_UNKNOWN_RECIPE, summary)
+    return true, message .. BuildVendorSkippedNote(excludedForVendor)
 end

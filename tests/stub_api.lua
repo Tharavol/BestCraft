@@ -81,6 +81,11 @@ local function NewEnv(opts)
         -- itemID absent from this table returns nil, matching an item whose bind info isn't
         -- cached/known yet -- OrderReagents.lua's IsBindOnPickup fails open on that (not BoP).
         itemBindTypes = opts.itemBindTypes or {},
+        -- itemID -> array of tooltip line strings, for C_TooltipInfo.GetItemByID. An itemID
+        -- absent from this table gets a nil `info` back, matching an item whose tooltip data
+        -- isn't cached yet -- OrderReagents.lua's IsVendorPurchasable fails open on that (not
+        -- flagged as vendor-purchasable).
+        itemTooltipLines = opts.itemTooltipLines or {},
         -- Lines shown via GameTooltip_AddNormalLine/AddErrorLine since the last SetOwner,
         -- each { kind = "Normal"|"Error", text = string }, for specs to assert tooltip content.
         tooltipLines = {},
@@ -128,6 +133,19 @@ local function NewEnv(opts)
             -- silently drift off 14 -- it did once already while writing this stub.
             local values = { [1] = api.itemNames[itemID], [14] = api.itemBindTypes[itemID] }
             return unpack(values, 1, 14)
+        end,
+    }
+    env.C_TooltipInfo = {
+        GetItemByID = function(itemID)
+            local lines = api.itemTooltipLines[itemID]
+            if not lines then
+                return nil
+            end
+            local wrapped = {}
+            for _, text in ipairs(lines) do
+                table.insert(wrapped, { leftText = text })
+            end
+            return { lines = wrapped }
         end,
     }
     -- SetOwner clears tooltipLines (matching a real tooltip resetting its content each time
@@ -226,6 +244,8 @@ end
 -- opts.itemNames: optional { [itemID] = name } fed to C_Item.GetItemInfo.
 -- opts.itemBindTypes: optional { [itemID] = Enum.ItemBind value } fed to C_Item.GetItemInfo's
 -- bindType return value.
+-- opts.itemTooltipLines: optional { [itemID] = { "line1", "line2", ... } } fed to
+-- C_TooltipInfo.GetItemByID.
 -- opts.addonVersion: optional string fed to GetAddOnMetadata(_, "Version").
 -- opts.skipAutoAddonLoaded: optional; when true, skips the auto-fire below entirely. Only
 -- core_spec.lua's own ADDON_LOADED-handling tests need this, to control firing order/addon
