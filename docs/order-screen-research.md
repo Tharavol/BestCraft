@@ -76,7 +76,11 @@ open.
   screen (`ProfessionsCustomerOrdersFrame.Form.order` when viewing an existing draft) rather
   than from `CraftSim.MODULES.recipeData` (which is only populated from the two screens
   CraftSim itself hooks).~~
-- `ProfessionsCustomerOrdersFrame` is provided by the load-on-demand
+- ~~`ProfessionsCustomerOrdersFrame` is provided by the load-on-demand
   `Blizzard_ProfessionsCustomerOrders` addon; confirm whether hooking on `ADDON_LOADED` for
   that addon name is sufficient, or whether the frame needs an `OnShow` hook too (mirroring
-  how CraftSim's own `Init.lua` handles `ProfessionsFrame.OrdersPage`).
+  how CraftSim's own `Init.lua` handles `ProfessionsFrame.OrdersPage`).~~ Confirmed sufficient:
+  every module (`OrderShoppingButton.lua`, `OrderMinimumQuality.lua`, `OrderCommission.lua`)
+  hooks through `OrderScreen:OnFormFound`, itself driven purely by the `ADDON_LOADED` gate in
+  `OrderScreen.lua`, and all of them have worked correctly across many in-game sessions through
+  v0.4.0 -- no `OnShow` hook on the frame itself has ever been needed.

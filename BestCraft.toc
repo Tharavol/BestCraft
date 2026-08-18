@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: BestCraft
-## Notes: Adds a button to the Place Crafting Order screen that builds an Auctionator shopping list for the highest quality reagents for a crafting order
+## Notes: Adds a button to the Place Crafting Order screen that builds and keeps updated an Auctionator shopping list for the right-quality reagents for a crafting order
 ## Author: Tharavol, Claude
 ## Version: @project-version@
 ## IconTexture: Interface\Icons\inv_misc_symbolofkings_01
@@ -8,7 +8,7 @@
 ## Dependencies: Auctionator
 ## SavedVariables: BestCraftDB
 
-## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that reads the highest-quality reagent allocation Blizzard's own "Use Best Quality Reagents" checkbox has already computed for the order, and builds an Auctionator shopping list for exactly what to go buy -- for every order, recraft or not. No independent quality or profit optimization is performed; this only reuses the choice the game has already made. Requires Auctionator. Source and issues: https://github.com/Tharavol/BestCraft
+## X-ReleaseNotes: Adds a button to the customer-side "Place Crafting Order" screen (ProfessionsCustomerOrdersFrame) that builds an Auctionator shopping list for exactly what to go buy -- for every order, recraft or not. Highest-quality reagent per slot, except when the recipe's output has no quality tiers of its own, where the cheapest reagent is picked instead since paying more buys nothing. Optional/finishing reagent slots, reagents already owned (bags/bank/reagent bank/Warband bank), and reagents cheaply available from an NPC vendor are all excluded, with a chat note explaining what was skipped and why. A second order's click merges into the existing list rather than replacing it, and the list updates live as reagents are bought on the Auction House. Guild orders default their commission to 1 silver, and Guild/Personal orders default their Minimum Quality requirement to the recipe's highest tier. Requires Auctionator. Source and issues: https://github.com/Tharavol/BestCraft
 
 Locales/enUS.lua
 
