@@ -2,7 +2,7 @@
 
 All notable changes to the BestCraft addon are documented in this file.
 
-## [Unreleased]
+## [1.0.0] - 2026-08-18
 
 - Initial project scaffolding
 - Hook the load-on-demand order addon (`Blizzard_ProfessionsCustomerOrders`) and locate
