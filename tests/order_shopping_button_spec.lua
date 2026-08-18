@@ -39,6 +39,21 @@ local function BuildFakeForm(stub, isRecraft, schematicFn)
     return form
 end
 
+-- Was `loaded.frames[#loaded.frames]` (the last frame created during LoadAddon) until issue
+-- #21 added a module (OrderShoppingPurchases.lua) that creates its own frame for an event
+-- listener, loading after this one -- which broke the "the button is always last" coincidence
+-- these tests relied on. Found by label instead, which stays correct regardless of what any
+-- later-loading module creates.
+local function FindButton(loaded)
+    for i = #loaded.frames, 1, -1 do
+        local frame = loaded.frames[i]
+        if frame.GetText and frame:GetText() == loaded.ns.L.BUTTON_LABEL then
+            return frame
+        end
+    end
+    return nil
+end
+
 local function AuctionatorGlobal(createCalls)
     return {
         API = {
@@ -63,7 +78,7 @@ return function(stub, T)
             presetGlobals = { ProfessionsCustomerOrdersFrame = ordersFrame },
         })
 
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertTrue(button ~= nil, "expected a button frame to have been created")
         T.AssertEqual(button:GetText(), "+ Shopping List", "expected the button's label")
         -- Mirrors Profession Shopping List's own "Core Alloy" button anchor exactly (see
@@ -85,7 +100,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertFalse(button:IsEnabled(), "expected disabled without Auctionator.API present")
     end)
 
@@ -97,7 +112,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertTrue(button:IsEnabled(), "expected enabled with Auctionator and reagents present")
     end)
 
@@ -110,7 +125,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertTrue(button:IsShown(), "sanity: shown by default")
 
         loaded.ns.db.settings.buttonEnabled = false
@@ -128,7 +143,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
 
         loaded.ns.db.settings.buttonEnabled = false
         fakeForm:UpdateReagentSlots()
@@ -151,7 +166,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertTrue(button:IsShown(), "sanity: shown by default")
 
         local checkbox
@@ -172,7 +187,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         button:FireScript("OnEnter")
 
         T.AssertEqual(#loaded.api.tooltipLines, 1, "expected one tooltip line")
@@ -187,7 +202,7 @@ return function(stub, T)
             itemNames = { [111] = "Some Reagent" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         button:FireScript("OnEnter")
 
         T.AssertEqual(#loaded.api.tooltipLines, 1, "expected one tooltip line")
@@ -203,7 +218,7 @@ return function(stub, T)
             itemNames = { [301] = "Option A", [302] = "Option B" },
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm }, Auctionator = AuctionatorGlobal() },
         })
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         button:FireScript("OnEnter")
 
         T.AssertEqual(loaded.api.tooltipLines[1].kind, "Error", "expected an Error line")
@@ -224,7 +239,7 @@ return function(stub, T)
             },
         })
 
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         button:FireScript("OnClick")
 
         T.AssertEqual(#createCalls, 1, "expected one shopping list created")
@@ -239,7 +254,7 @@ return function(stub, T)
             presetGlobals = { ProfessionsCustomerOrdersFrame = { Form = fakeForm } },
         })
 
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertFalse(button:IsEnabled(), "expected disabled before Auctionator became available")
 
         loaded.env.Auctionator = AuctionatorGlobal()
@@ -262,7 +277,7 @@ return function(stub, T)
                 },
             })
 
-            local button = loaded.frames[#loaded.frames]
+            local button = FindButton(loaded)
             T.AssertEqual(button:GetText(), "+ Shopping List",
                 "expected the same label regardless of isRecraft=" .. tostring(isRecraft))
             T.AssertTrue(button:IsEnabled(), "expected enabled regardless of isRecraft=" .. tostring(isRecraft))
@@ -285,7 +300,7 @@ return function(stub, T)
             },
         })
 
-        local button = loaded.frames[#loaded.frames]
+        local button = FindButton(loaded)
         T.AssertFalse(button:IsEnabled(),
             "expected disabled with Auctionator available -- a required reagent is unresolved")
 

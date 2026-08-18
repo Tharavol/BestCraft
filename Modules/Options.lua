@@ -40,6 +40,16 @@ local CHECKBOXES = {
         label = L.OPTIONS_MAX_QUALITY_LABEL,
         tooltip = L.OPTIONS_MAX_QUALITY_TOOLTIP,
     },
+    {
+        key = "guildCommissionEnabled",
+        label = L.OPTIONS_GUILD_COMMISSION_LABEL,
+        tooltip = L.OPTIONS_GUILD_COMMISSION_TOOLTIP,
+    },
+    {
+        key = "updateOnPurchaseEnabled",
+        label = L.OPTIONS_UPDATE_ON_PURCHASE_LABEL,
+        tooltip = L.OPTIONS_UPDATE_ON_PURCHASE_TOOLTIP,
+    },
 }
 Options.CHECKBOXES = CHECKBOXES
 

@@ -130,3 +130,25 @@ All notable changes to the BestCraft addon are documented in this file.
   on the list at all. Confirmed by testing #23/#24 against a real order with a single-option
   optional slot. Now gated on `slot.required` up front, so an optional slot is never considered
   for the list regardless of how confidently it would otherwise resolve
+- Default a Guild order's commission to 1 silver whenever it's still 0 (issue #22) --
+  Blizzard's own "Place Order" button already refuses to submit at a 0 commission for every
+  order type (`PROFESSIONS_ORDER_MUST_TIP`), confirmed by reading Blizzard's actual client
+  source (`Blizzard_ProfessionsCustomerOrdersForm.lua`), so there's no submittable state this
+  takes away. Guild-only, per the request: Public orders already usually have Blizzard's own
+  market-based commission suggestion to draw on (an existing Public listing's tip + 1 silver,
+  applied asynchronously once a matching request returns), and Personal orders are typically a
+  pre-arranged price. New `Modules/OrderCommission.lua`, plus a fourth options-panel checkbox/
+  `/bestcraft guildcommission [on|off]` command (on by default) to turn it off
+- Keep BestCraft's own shopping list in sync as its reagents get bought on the Auction House
+  (issue #21), reducing (or removing) the matching line item by the purchased quantity --
+  matching CraftSim's own equivalent behavior for its craft-queue list, confirmed by reading
+  its actual source (`CraftSim/Modules/Shopping/Shopping.lua`) and adapted for BestCraft's
+  single list: hooks `C_AuctionHouse.ConfirmCommoditiesPurchase` to capture what's being
+  bought, then reconciles against the list once `COMMODITY_PURCHASE_SUCCEEDED` confirms the
+  purchase went through (not `COMMODITY_PURCHASE_FAILED`). Commodities only -- the stackable,
+  region-wide-priced AH market virtually every crafting reagent trades on, and the only path
+  CraftSim's own working implementation covers either. Reuses the signed-delta merge machinery
+  issue #24 built (`OrderScreen.ApplyTermDeltas`) with a single negative-quantity delta, rather
+  than a separate read-compare-write implementation. New `Modules/OrderShoppingPurchases.lua`,
+  plus a fifth options-panel checkbox/`/bestcraft updateonpurchase [on|off]` command (on by
+  default) to turn it off

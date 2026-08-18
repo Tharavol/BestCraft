@@ -83,6 +83,16 @@ local COMMANDS = {
         handler = function(_, rest) Toggle("maxQualityEnabled", rest, L.CMD_MAXQUALITY_LABEL, true) end,
     },
     {
+        name = "guildcommission",
+        help = { L.CMD_HELP_GUILDCOMMISSION },
+        handler = function(_, rest) Toggle("guildCommissionEnabled", rest, L.CMD_GUILDCOMMISSION_LABEL, true) end,
+    },
+    {
+        name = "updateonpurchase",
+        help = { L.CMD_HELP_UPDATEONPURCHASE },
+        handler = function(_, rest) Toggle("updateOnPurchaseEnabled", rest, L.CMD_UPDATEONPURCHASE_LABEL, true) end,
+    },
+    {
         name = "help",
         help = { L.CMD_HELP_HELP },
         handler = function() PrintUsage() end,

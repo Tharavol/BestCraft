@@ -153,6 +153,26 @@ local function NewEnv(opts)
             return { lines = wrapped }
         end,
     }
+    -- Real ConfirmCommoditiesPurchase actually starts a purchase; this stub only needs to be a
+    -- callable field the addon's own hooksecurefunc can wrap (see env.hooksecurefunc below --
+    -- table+methodName variant only, the same pattern the addon itself relies on).
+    env.C_AuctionHouse = {
+        ConfirmCommoditiesPurchase = function() end,
+    }
+    -- Item:CreateFromItemID(itemID) -- a colon call on the global Item "class" table, so the
+    -- addon's own call passes Item itself as the first (self) argument, discarded here.
+    -- ContinueOnItemLoad runs its callback synchronously -- nothing in this offline harness is
+    -- genuinely async, matching every other "not yet cached" case (GetItemInfo, GetItemCount,
+    -- etc.) already stubbed as immediate lookups. Reuses api.itemNames, the same table
+    -- C_Item.GetItemInfo already reads, rather than a second parallel name table.
+    env.Item = {
+        CreateFromItemID = function(_, itemID)
+            local item = {}
+            function item:GetItemName() return api.itemNames[itemID] end
+            function item:ContinueOnItemLoad(callback) callback() end
+            return item
+        end,
+    }
     -- SetOwner clears tooltipLines (matching a real tooltip resetting its content each time
     -- it's re-anchored), the Add*Line helpers append to it, Hide is a no-op observer.
     env.GameTooltip = {

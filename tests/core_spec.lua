@@ -23,6 +23,8 @@ return function(stub, T)
         T.AssertTrue(loaded.ns.db.settings.buttonEnabled, "expected the buttonEnabled default")
         T.AssertFalse(loaded.ns.db.settings.printOnLogin, "expected the printOnLogin default")
         T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected the maxQualityEnabled default")
+        T.AssertTrue(loaded.ns.db.settings.guildCommissionEnabled, "expected the guildCommissionEnabled default")
+        T.AssertTrue(loaded.ns.db.settings.updateOnPurchaseEnabled, "expected the updateOnPurchaseEnabled default")
     end)
 
     T.Test("ignores ADDON_LOADED events for other addons", function()
@@ -61,12 +63,18 @@ return function(stub, T)
         loaded.ns.db.settings.buttonEnabled = false
         loaded.ns.db.settings.printOnLogin = true
         loaded.ns.db.settings.maxQualityEnabled = false
+        loaded.ns.db.settings.guildCommissionEnabled = false
+        loaded.ns.db.settings.updateOnPurchaseEnabled = false
 
         loaded.ns.ResetToDefaults()
 
         T.AssertTrue(loaded.ns.db.settings.buttonEnabled, "expected buttonEnabled reset to its default")
         T.AssertFalse(loaded.ns.db.settings.printOnLogin, "expected printOnLogin reset to its default")
         T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected maxQualityEnabled reset to its default")
+        T.AssertTrue(loaded.ns.db.settings.guildCommissionEnabled,
+            "expected guildCommissionEnabled reset to its default")
+        T.AssertTrue(loaded.ns.db.settings.updateOnPurchaseEnabled,
+            "expected updateOnPurchaseEnabled reset to its default")
     end)
 
     T.Test("ns.ResetToDefaults refreshes the order-screen button live, if it exists", function()

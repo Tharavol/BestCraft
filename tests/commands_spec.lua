@@ -89,6 +89,53 @@ return function(stub, T)
         T.AssertTrue(loaded.ns.db.settings.maxQualityEnabled, "expected the second bare toggle to flip it back on")
     end)
 
+    T.Test("guildcommission on/off sets guildCommissionEnabled explicitly", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+
+        loaded.ns.Commands:Dispatch("guildcommission off")
+        T.AssertFalse(loaded.ns.db.settings.guildCommissionEnabled, "expected 'guildcommission off' to set it false")
+
+        loaded.ns.Commands:Dispatch("guildcommission on")
+        T.AssertTrue(loaded.ns.db.settings.guildCommissionEnabled, "expected 'guildcommission on' to set it true")
+    end)
+
+    T.Test("bare guildcommission toggles the current state", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        T.AssertTrue(loaded.ns.db.settings.guildCommissionEnabled, "sanity: starts true")
+
+        loaded.ns.Commands:Dispatch("guildcommission")
+        T.AssertFalse(loaded.ns.db.settings.guildCommissionEnabled, "expected the first bare toggle to flip it off")
+
+        loaded.ns.Commands:Dispatch("guildcommission")
+        T.AssertTrue(loaded.ns.db.settings.guildCommissionEnabled,
+            "expected the second bare toggle to flip it back on")
+    end)
+
+    T.Test("updateonpurchase on/off sets updateOnPurchaseEnabled explicitly", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+
+        loaded.ns.Commands:Dispatch("updateonpurchase off")
+        T.AssertFalse(loaded.ns.db.settings.updateOnPurchaseEnabled,
+            "expected 'updateonpurchase off' to set it false")
+
+        loaded.ns.Commands:Dispatch("updateonpurchase on")
+        T.AssertTrue(loaded.ns.db.settings.updateOnPurchaseEnabled,
+            "expected 'updateonpurchase on' to set it true")
+    end)
+
+    T.Test("bare updateonpurchase toggles the current state", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
+        T.AssertTrue(loaded.ns.db.settings.updateOnPurchaseEnabled, "sanity: starts true")
+
+        loaded.ns.Commands:Dispatch("updateonpurchase")
+        T.AssertFalse(loaded.ns.db.settings.updateOnPurchaseEnabled,
+            "expected the first bare toggle to flip it off")
+
+        loaded.ns.Commands:Dispatch("updateonpurchase")
+        T.AssertTrue(loaded.ns.db.settings.updateOnPurchaseEnabled,
+            "expected the second bare toggle to flip it back on")
+    end)
+
     T.Test("login with an unrecognized value is rejected, not silently ignored", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = {} })
         local before = loaded.ns.db.settings.printOnLogin

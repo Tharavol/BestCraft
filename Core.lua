@@ -60,6 +60,10 @@ ns.DEFAULT_SETTINGS = {
     -- On by default: matches issue #17's original behavior (always applied) before this
     -- became optional.
     maxQualityEnabled = true,
+    -- On by default, same reasoning as maxQualityEnabled -- see OrderCommission.lua (#22).
+    guildCommissionEnabled = true,
+    -- On by default, same reasoning -- see OrderShoppingPurchases.lua (#21).
+    updateOnPurchaseEnabled = true,
 }
 
 local function InitializeDB()

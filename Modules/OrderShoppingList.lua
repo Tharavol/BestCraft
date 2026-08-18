@@ -172,6 +172,12 @@ local function ApplyTermDeltas(existingSearchStrings, deltaTerms)
     return result
 end
 
+-- Exposed as a plain field (not a colon method -- ApplyTermDeltas never uses self) so
+-- OrderShoppingPurchases.lua can reuse it for issue #21's purchase-driven decrements, the same
+-- delta-application machinery built here for issue #24's merge. Call as
+-- OrderScreen.ApplyTermDeltas(existingSearchStrings, deltaTerms), not with a colon.
+OrderScreen.ApplyTermDeltas = ApplyTermDeltas
+
 ---@param terms table
 ---@return table negated Same terms with quantity sign flipped, for undoing a prior contribution.
 local function NegateTerms(terms)

@@ -23,6 +23,7 @@ globals = {
 
 read_globals = {
     "C_AddOns",
+    "C_AuctionHouse",
     "C_Item",
     "C_TooltipInfo",
     "C_TradeSkillUI",
@@ -34,6 +35,7 @@ read_globals = {
     "GameTooltip_Hide",
     "GetAddOnMetadata",
     "hooksecurefunc",
+    "Item",
     "Settings",
 
     -- Blizzard's load-on-demand Crafting Orders customer frame. See

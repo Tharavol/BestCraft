@@ -22,3 +22,5 @@ Modules/OrderReagents.lua
 Modules/OrderShoppingList.lua
 Modules/OrderShoppingButton.lua
 Modules/OrderMinimumQuality.lua
+Modules/OrderCommission.lua
+Modules/OrderShoppingPurchases.lua

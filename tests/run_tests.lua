@@ -18,5 +18,7 @@ dofile("tests/order_reagents_spec.lua")(stub, T)
 dofile("tests/order_shopping_list_spec.lua")(stub, T)
 dofile("tests/order_shopping_button_spec.lua")(stub, T)
 dofile("tests/order_minimum_quality_spec.lua")(stub, T)
+dofile("tests/order_commission_spec.lua")(stub, T)
+dofile("tests/order_shopping_purchases_spec.lua")(stub, T)
 
 os.exit(T.Summary() and 0 or 1)
