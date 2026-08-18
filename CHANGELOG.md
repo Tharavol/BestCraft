@@ -104,3 +104,29 @@ All notable changes to the BestCraft addon are documented in this file.
   `C_TooltipInfo.GetItemByID` and scanning for "vendor" in the item's own flavor text for
   whatever that database doesn't cover (Blizzard's own tooltip says "Can be purchased from
   vendors." for these, confirmed side-by-side against an AH-only reagent from the same recipe)
+- Exclude reagents already owned (bags, bank, reagent bank, Warband bank) from the shopping
+  list, reducing the needed quantity by what's already owned rather than shopping for the full
+  amount every time (issue #23) -- via `C_Item.GetItemCount(itemID, true, false, true, true)`,
+  the same argument shape confirmed in use across CraftSim's own source. A fully-covered
+  reagent is skipped entirely and named in the same "Skipped X -- ..." chat note #20 introduced
+  ("already own enough"), rather than silently shrinking the list with no explanation
+- Building a shopping list for a second order now merges into the first order's list instead of
+  discarding it (issue #24): a reagent both orders need gets its quantity summed rather than
+  duplicated as a second line item, and a reagent only one order needs is simply added.
+  Confirmed working via `Auctionator.API.v1.GetShoppingListItems`/`ConvertFromSearchString`/
+  `ConvertToSearchString`/`CreateShoppingList` -- the same read-compare-write pattern CraftSim's
+  own `AddSearchTermToShoppingList` uses (`Modules/Shopping/Shopping.lua:135-189`), generalized
+  here into signed-quantity deltas so multiple entries merge in one pass. Re-clicking the button
+  for the *same* order updates that order's own line items instead of doubling them on every
+  click -- each order's last contribution is tracked (weak-keyed by the order object, the same
+  pattern `OrderMinimumQuality.lua` already uses for its own per-draft state) and undone before
+  the new contribution merges in, preserving the idempotency the old delete-then-recreate
+  approach gave a single order while extending real merging to genuinely different orders
+- Fixed: optional/finishing reagent slots (`reagentSlotSchematic.required == false` --
+  embellishments and the like) were going onto the shopping list whenever they happened to
+  resolve to an unambiguous pick, even though they're not something the recipe actually needs
+  (issue #25) -- `GetChosenReagentEntries` checked `required` only to decide whether an
+  *unresolved* slot should block the button, never to decide whether a *resolved* one belonged
+  on the list at all. Confirmed by testing #23/#24 against a real order with a single-option
+  optional slot. Now gated on `slot.required` up front, so an optional slot is never considered
+  for the list regardless of how confidently it would otherwise resolve

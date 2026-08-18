@@ -117,21 +117,57 @@ local function IsVendorPurchasable(itemID)
     return false
 end
 
+-- Reagents already sitting in inventory shouldn't be shopped for again (issue #23) -- buying
+-- more of something already owned, at the resolved quality tier, is wasted gold. Since
+-- PickReagent above already resolves a slot down to one specific itemID (a different quality
+-- tier of the same reagent is a different itemID, per its own comment), checking that same
+-- itemID's owned count already accounts for quality with no extra tier-matching needed.
+--
+-- C_Item.GetItemCount(itemID, includeBank, includeCharges, includeReagentBank, includeWarband)
+-- -- confirmed in use with this exact argument shape across CraftSim's own source (e.g.
+-- CraftSim/Modules/CraftQueue/UI.lua:394, CraftSim/Classes/SalvageReagentSlot.lua:44). Bags are
+-- always included regardless of these flags; bank, reagent bank, and Warband bank are asked
+-- for too, but not "charges" (a consumable-specific concept unrelated to crafting reagent
+-- stacks). Fails open to 0 (i.e. "own none") on a pcall failure, the safer default -- treating
+-- an API error as "already have plenty" would risk silently dropping a genuinely needed
+-- reagent from the list.
+local function GetOwnedCount(itemID)
+    local ok, count = pcall(C_Item.GetItemCount, itemID, true, false, true, true)
+    if ok and count then
+        return count
+    end
+    return 0
+end
+
 -- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
--- schematic's reagent slots, choosing one item per slot and its full required quantity. Slots
--- with no confident choice are omitted, not guessed. OrderShoppingList.lua reshapes this into
+-- schematic's *required* reagent slots only, choosing one item per slot and its needed
+-- quantity (full quantityRequired minus whatever's already owned). Optional slots -- finishing
+-- reagents, embellishments, and the like -- are skipped entirely regardless of whether they'd
+-- resolve to a confident pick: confirmed by testing (a slot with a single, unambiguous option
+-- was going straight onto the shopping list even though it's an optional finishing reagent, not
+-- something the recipe actually needs) that "resolvable" and "worth shopping for" are different
+-- questions, and this only ever answers the second one for *required* slots. Slots with no
+-- confident choice are omitted too, not guessed. OrderShoppingList.lua reshapes the result into
 -- Auctionator search strings.
 --
--- Three separate reasons a slot can be excluded, all confirmed in-game against real orders:
--- 1. orderSource == Enum.CraftingOrderReagentSource.Crafter -- Blizzard's own client source
---    (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT) says these are reagents the *crafter* must
---    personally provide, not something the customer placing the order is meant to supply.
--- 2. The resolved item is bind-on-pickup (see IsBindOnPickup) -- can't be bought regardless of
+-- Three separate reasons a required slot's reagent can still be left off the list, all
+-- confirmed in-game against real orders except #3 (per user request, issue #23, not yet
+-- confirmed live):
+-- 1. The resolved item is bind-on-pickup (see IsBindOnPickup) -- can't be bought regardless of
 --    who's meant to provide it, Customer-sourced or not (this is what actually caught "Fused
---    Vitality"; its orderSource was Customer, not Crafter, so #1 alone didn't cover it).
--- 3. The resolved item is vendor-purchasable (see IsVendorPurchasable) -- technically buyable
+--    Vitality"; its orderSource was Customer, not Crafter, so orderSource alone didn't cover
+--    it).
+-- 2. The resolved item is vendor-purchasable (see IsVendorPurchasable) -- technically buyable
 --    on the AH too, but pointlessly expensive there, so it's reported back separately rather
 --    than silently dropped (see excludedForVendor below).
+-- 3. The full quantityRequired is already owned (see GetOwnedCount) -- reported back
+--    separately too (see excludedForOwned below). A *partial* owned count reduces the entry's
+--    quantity instead of excluding it outright.
+-- orderSource == Enum.CraftingOrderReagentSource.Crafter is checked too -- Blizzard's own
+-- client source (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT) says these are reagents the
+-- *crafter* must personally provide, not something the customer placing the order is meant to
+-- supply -- but that can only actually occur on a required slot in practice, so it's folded
+-- into the same required-slot guard rather than a fourth separate reason.
 -- None of these exclusions count against allRequiredResolved below -- none was ever something
 -- the customer's shopping list should resolve via the AH in the first place, unlike a
 -- genuinely unresolved quality pick.
@@ -140,38 +176,44 @@ end
 ---   of the priciest -- for recipes whose output has no quality tiers to benefit from a
 ---   premium reagent. Falsy (the default) keeps the original highest-quality behavior.
 ---@return table entries
----@return boolean allRequiredResolved False if a *required*, purchasable-in-principle slot had
----   no confident pick -- e.g. an optional reagent's ranked choice was never touched by the
----   player, or no candidate reports a quality tier yet. Skipping such a slot silently would
----   hand back an incomplete shopping list with no indication a required reagent is missing,
----   so callers should refuse to act (rather than proceed) when this is false. Unresolved
----   *optional* slots (required == false) don't affect this -- they're expected to be
----   skippable.
+---@return boolean allRequiredResolved False if a required, purchasable-in-principle slot had no
+---   confident pick -- e.g. no candidate reports a quality tier yet. Skipping such a slot
+---   silently would hand back an incomplete shopping list with no indication a required
+---   reagent is missing, so callers should refuse to act (rather than proceed) when this is
+---   false.
 ---@return table excludedForVendor itemIDs left off the list because IsVendorPurchasable was
 ---   true -- callers should tell the player what was skipped and why (issue #20), rather than
 ---   silently shrinking the list with no explanation.
+---@return table excludedForOwned itemIDs left off the list because the full quantityRequired
+---   was already owned (issue #23) -- same reporting reasoning as excludedForVendor.
 function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
     local entries = {}
     local excludedForVendor = {}
+    local excludedForOwned = {}
     local allRequiredResolved = true
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
-        if slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
+        if slot.required and slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
             local itemID = PickReagent(slot, preferLowestQuality)
             -- Checked before IsBindOnPickup below: an item could in principle be both, and a
             -- vendor exclusion is the more informative one to report back to the player.
             if itemID and IsVendorPurchasable(itemID) then
                 table.insert(excludedForVendor, itemID)
             elseif itemID and not IsBindOnPickup(itemID) then
-                table.insert(entries, {
-                    itemID = itemID,
-                    quantity = slot.quantityRequired,
-                    dataSlotIndex = slot.dataSlotIndex,
-                    required = slot.required,
-                })
-            elseif slot.required and not itemID then
+                local neededQuantity = slot.quantityRequired - GetOwnedCount(itemID)
+                if neededQuantity <= 0 then
+                    table.insert(excludedForOwned, itemID)
+                else
+                    table.insert(entries, {
+                        itemID = itemID,
+                        quantity = neededQuantity,
+                        dataSlotIndex = slot.dataSlotIndex,
+                        required = slot.required,
+                    })
+                end
+            elseif not itemID then
                 allRequiredResolved = false
             end
         end
     end
-    return entries, allRequiredResolved, excludedForVendor
+    return entries, allRequiredResolved, excludedForVendor, excludedForOwned
 end

@@ -1,13 +1,16 @@
 -- order_shopping_list_spec.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 
-local function BuildFakeForm(stub, schematic)
+-- order defaults to a fresh table (a distinct identity per call, the same as a real distinct
+-- order/draft) unless a caller passes one in explicitly to simulate re-visiting the same order.
+local function BuildFakeForm(stub, schematic, order)
     local form = stub.MakeFrame()
     form.TrackRecipeCheckbox = stub.MakeFrame()
     form.transaction = {
         GetRecipeID = function() return 999 end,
         GetRecipeSchematic = function() return schematic end,
     }
+    form.order = order or {}
     return form
 end
 
@@ -293,34 +296,189 @@ return function(stub, T)
                 "expected the vendor-skip reason even though the list itself is empty")
         end)
 
-    T.Test("CreateShoppingList deletes an existing list under the same name first", function()
-        local deleteCalls = {}
+    T.Test("CreateShoppingList's success message notes already-owned reagents skipped", function()
+        local schematic = {
+            name = "Thalassian Alchemy Coveralls",
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 20, reagents = { { itemID = 111 } } },
+                { dataSlotIndex = 2, required = true, quantityRequired = 1, reagents = { { itemID = 222 } } },
+            },
+        }
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality", [222] = "Kaleidoscopic Prism" },
+            itemCounts = { [222] = 1 },
+            presetGlobals = {
+                Auctionator = { API = { v1 = {
+                    ConvertToSearchString = function(_, term) return term.searchString end,
+                    CreateShoppingList = function() end,
+                } } },
+            },
+        })
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic)
+
+        local ok, message = loaded.ns.OrderScreen:CreateShoppingList()
+
+        T.AssertTrue(ok, "expected success -- the not-fully-owned reagent still has an entry")
+        T.AssertTrue(message:find("Fused Vitality", 1, true) ~= nil, "expected the shopped reagent named")
+        T.AssertTrue(message:find("Skipped Kaleidoscopic Prism -- already own enough", 1, true) ~= nil,
+            "expected the already-owned reagent named and why")
+    end)
+
+    -- A minimal in-memory Auctionator stand-in that actually stores list contents (encoded as
+    -- "name|tier|quantity" search strings) across calls, rather than just recording that a
+    -- call happened -- issue #24's merge behavior only shows up across *multiple*
+    -- CreateShoppingList calls sharing the same backing list, which the other, call-recording
+    -- presetGlobals fakes throughout this file aren't set up to do.
+    local function BuildFakeAuctionator()
+        local lists = {}
+        local function Encode(term)
+            return ("%s|%s|%d"):format(term.searchString, tostring(term.tier or 0), term.quantity)
+        end
+        local function Decode(searchString)
+            local name, tier, quantity = searchString:match("^(.-)|(.-)|(%d+)$")
+            if not name then
+                return nil
+            end
+            return { searchString = name, tier = tonumber(tier), quantity = tonumber(quantity) }
+        end
+        return {
+            API = {
+                v1 = {
+                    ConvertToSearchString = function(_, term) return Encode(term) end,
+                    ConvertFromSearchString = function(_, searchString) return Decode(searchString) end,
+                    CreateShoppingList = function(_, listName, searchStrings)
+                        local copy = {}
+                        for i, s in ipairs(searchStrings) do copy[i] = s end
+                        lists[listName] = copy
+                    end,
+                    GetShoppingListItems = function(_, listName) return lists[listName] end,
+                },
+            },
+            Shopping = {
+                ListManager = {
+                    GetIndexForName = function(_, listName) return lists[listName] ~= nil and 1 or nil end,
+                },
+            },
+            _lists = lists,
+        }
+    end
+
+    T.Test("CreateShoppingList merges a second order's reagents into the first order's list", function()
+        local fakeAuctionator = BuildFakeAuctionator()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality", [222] = "Kaleidoscopic Prism" },
+            presetGlobals = { Auctionator = fakeAuctionator },
+        })
+
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        })
+        loaded.ns.OrderScreen:CreateShoppingList()
+
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 2, reagents = { { itemID = 222 } } },
+            },
+        })
+        loaded.ns.OrderScreen:CreateShoppingList()
+
+        T.AssertEqual(#fakeAuctionator._lists.BestCraft, 2,
+            "expected both orders' reagents on the list, not just the second order's")
+    end)
+
+    T.Test("CreateShoppingList sums quantities when two different orders need the same reagent", function()
+        local fakeAuctionator = BuildFakeAuctionator()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality" },
+            presetGlobals = { Auctionator = fakeAuctionator },
+        })
+        local schematic = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic)
+        loaded.ns.OrderScreen:CreateShoppingList()
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic) -- a second, different order
+        loaded.ns.OrderScreen:CreateShoppingList()
+
+        T.AssertEqual(#fakeAuctionator._lists.BestCraft, 1, "expected one merged line item, not two")
+        T.AssertTrue(fakeAuctionator._lists.BestCraft[1]:find("|10$") ~= nil,
+            "expected the two orders' quantities (5 + 5) summed")
+    end)
+
+    T.Test("CreateShoppingList doesn't double a quantity when re-clicked for the same order", function()
+        local fakeAuctionator = BuildFakeAuctionator()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemNames = { [111] = "Fused Vitality" },
+            presetGlobals = { Auctionator = fakeAuctionator },
+        })
+        local sharedOrder = {}
+        local schematic = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+        loaded.ns.OrderScreen.form = BuildFakeForm(stub, schematic, sharedOrder)
+
+        loaded.ns.OrderScreen:CreateShoppingList()
+        loaded.ns.OrderScreen:CreateShoppingList() -- same button, same order, clicked again
+
+        T.AssertEqual(#fakeAuctionator._lists.BestCraft, 1, "expected one line item")
+        T.AssertTrue(fakeAuctionator._lists.BestCraft[1]:find("|5$") ~= nil,
+            "expected quantity 5, not doubled to 10 by the second click")
+    end)
+
+    T.Test("CreateShoppingList updates (not adds to) the same order's own line when its need changes",
+        function()
+            local fakeAuctionator = BuildFakeAuctionator()
+            local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+                addonsLoaded = { Auctionator = true },
+                itemNames = { [111] = "Fused Vitality" },
+                presetGlobals = { Auctionator = fakeAuctionator },
+            })
+            local sharedOrder = {}
+            loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+                reagentSlotSchematics = {
+                    { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+                },
+            }, sharedOrder)
+            loaded.ns.OrderScreen:CreateShoppingList()
+
+            -- Same order, but its reagent need changed (e.g. a different allocation) between
+            -- clicks -- a fresh BuildFakeForm with the *same* sharedOrder table simulates that.
+            loaded.ns.OrderScreen.form = BuildFakeForm(stub, {
+                reagentSlotSchematics = {
+                    { dataSlotIndex = 1, required = true, quantityRequired = 3, reagents = { { itemID = 111 } } },
+                },
+            }, sharedOrder)
+            loaded.ns.OrderScreen:CreateShoppingList()
+
+            T.AssertEqual(#fakeAuctionator._lists.BestCraft, 1, "expected one line item")
+            T.AssertTrue(fakeAuctionator._lists.BestCraft[1]:find("|3$") ~= nil,
+                "expected quantity 3 -- this order's own contribution replaced, not added on top")
+        end)
+
+    T.Test("CreateShoppingList creates a fresh list when none exists yet", function()
+        local fakeAuctionator = BuildFakeAuctionator()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", {
             addonsLoaded = { Auctionator = true },
             reagentQualities = { [111] = 3 },
             itemNames = { [111] = "Glimmering Gemdust" },
-            presetGlobals = {
-                Auctionator = {
-                    API = {
-                        v1 = {
-                            ConvertToSearchString = function(_, term) return term.searchString end,
-                            CreateShoppingList = function() end,
-                        },
-                    },
-                    Shopping = {
-                        ListManager = {
-                            GetIndexForName = function() return 1 end,
-                            Delete = function(_, listName) table.insert(deleteCalls, listName) end,
-                        },
-                    },
-                },
-            },
+            presetGlobals = { Auctionator = fakeAuctionator },
         })
         loaded.ns.OrderScreen.form = BuildFakeForm(stub, ONE_SLOT_SCHEMATIC)
 
-        loaded.ns.OrderScreen:CreateShoppingList()
+        local ok = loaded.ns.OrderScreen:CreateShoppingList()
 
-        T.AssertEqual(#deleteCalls, 1, "expected the existing list to be deleted first")
-        T.AssertEqual(deleteCalls[1], "BestCraft", "expected the unified list name deleted")
+        T.AssertTrue(ok, "expected success")
+        T.AssertEqual(#fakeAuctionator._lists.BestCraft, 1, "expected the new list created with one entry")
     end)
 end

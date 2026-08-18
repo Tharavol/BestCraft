@@ -86,6 +86,10 @@ local function NewEnv(opts)
         -- isn't cached yet -- OrderReagents.lua's IsVendorPurchasable fails open on that (not
         -- flagged as vendor-purchasable).
         itemTooltipLines = opts.itemTooltipLines or {},
+        -- itemID -> owned count (bags+bank+reagent bank+Warband bank), for C_Item.GetItemCount.
+        -- An itemID absent from this table returns 0, matching a reagent the player owns none
+        -- of -- OrderReagents.lua's GetOwnedCount treats that the same as an API failure.
+        itemCounts = opts.itemCounts or {},
         -- Lines shown via GameTooltip_AddNormalLine/AddErrorLine since the last SetOwner,
         -- each { kind = "Normal"|"Error", text = string }, for specs to assert tooltip content.
         tooltipLines = {},
@@ -134,6 +138,7 @@ local function NewEnv(opts)
             local values = { [1] = api.itemNames[itemID], [14] = api.itemBindTypes[itemID] }
             return unpack(values, 1, 14)
         end,
+        GetItemCount = function(itemID) return api.itemCounts[itemID] or 0 end,
     }
     env.C_TooltipInfo = {
         GetItemByID = function(itemID)
@@ -246,6 +251,7 @@ end
 -- bindType return value.
 -- opts.itemTooltipLines: optional { [itemID] = { "line1", "line2", ... } } fed to
 -- C_TooltipInfo.GetItemByID.
+-- opts.itemCounts: optional { [itemID] = ownedCount } fed to C_Item.GetItemCount.
 -- opts.addonVersion: optional string fed to GetAddOnMetadata(_, "Version").
 -- opts.skipAutoAddonLoaded: optional; when true, skips the auto-fire below entirely. Only
 -- core_spec.lua's own ADDON_LOADED-handling tests need this, to control firing order/addon

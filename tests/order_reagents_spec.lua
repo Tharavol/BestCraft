@@ -75,19 +75,55 @@ return function(stub, T)
         T.AssertEqual(entries[1].itemID, 111, "expected the only option regardless of the flag")
     end)
 
-    T.Test("skips a multi-option slot when no option reports a quality tier", function()
+    T.Test("skips a multi-option required slot when no option reports a quality tier", function()
         local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
         local schematicInfo = {
             reagentSlotSchematics = {
                 {
                     dataSlotIndex = 6,
-                    required = false,
+                    required = true,
                     reagents = { { itemID = 301 }, { itemID = 302 }, { itemID = 303 } },
                 },
             },
         }
-        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
         T.AssertEqual(#entries, 0, "expected no entries -- ambiguous choice, not guessed")
+        T.AssertFalse(allRequiredResolved, "expected false -- a required slot had no confident pick")
+    end)
+
+    T.Test("skips an optional slot entirely, even one with a single, unambiguous option", function()
+        -- Confirmed by testing (issue feedback): a "finishing reagent" / embellishment slot
+        -- with exactly one listed option was going straight onto the shopping list even though
+        -- it's optional, not something the recipe actually needs. required == false now
+        -- excludes a slot outright, before PickReagent's own ambiguity check ever runs.
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 6, required = false, quantityRequired = 1,
+                    reagents = { { itemID = 301 } },
+                },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected no entries -- optional slots are never shopped for")
+    end)
+
+    T.Test("skips an optional slot even when quality data would otherwise resolve it", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            reagentQualities = { [201] = 2, [202] = 3 },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 6, required = false, quantityRequired = 1,
+                    reagents = { { itemID = 201 }, { itemID = 202 } },
+                },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected no entries -- optional slots are never shopped for")
     end)
 
     T.Test("skips a slot with no reagent options at all", function()
@@ -344,5 +380,64 @@ return function(stub, T)
         T.AssertEqual(#entries, 1,
             "expected the reagent included -- unknown tooltip status isn't treated as vendor-purchasable")
         T.AssertEqual(#excludedForVendor, 0, "expected nothing excluded")
+    end)
+
+    T.Test("reduces the shopping quantity by what's already owned", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemCounts = { [111] = 2 },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 1, "expected one entry")
+        T.AssertEqual(entries[1].quantity, 3, "expected quantityRequired minus owned count")
+    end)
+
+    T.Test("excludes a reagent entirely when the full quantity is already owned", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemCounts = { [111] = 5 },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries, allRequiredResolved, _, excludedForOwned =
+            loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected no entries -- fully covered by what's owned")
+        T.AssertTrue(allRequiredResolved,
+            "expected true -- an already-owned reagent was deliberately excluded, not unresolved")
+        T.AssertEqual(#excludedForOwned, 1, "expected one excluded itemID")
+        T.AssertEqual(excludedForOwned[1], 111, "expected the fully-owned itemID reported")
+    end)
+
+    T.Test("excludes a reagent when owned count exceeds what's required", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemCounts = { [111] = 99 },
+        })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(#entries, 0, "expected no entries -- more than enough already owned")
+    end)
+
+    T.Test("includes the full quantity when nothing is owned", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", { addonsLoaded = { Auctionator = true } })
+        local schematicInfo = {
+            reagentSlotSchematics = {
+                { dataSlotIndex = 1, required = true, quantityRequired = 5, reagents = { { itemID = 111 } } },
+            },
+        }
+        local entries = loaded.ns.OrderScreen:GetChosenReagentEntries(schematicInfo)
+        T.AssertEqual(entries[1].quantity, 5, "expected the full quantityRequired -- nothing owned")
     end)
 end

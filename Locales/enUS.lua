@@ -43,6 +43,10 @@ L.CHAT_UNKNOWN_RECIPE = "this order"
 -- so it leads with its own space rather than the caller adding one.
 L.CHAT_SKIPPED_VENDOR = " Skipped %s -- available from a vendor."
 
+-- Issue #23: reagents already owned (bags/bank/reagent bank/Warband bank) at the full
+-- quantity needed are left off the list too. Same %s convention as CHAT_SKIPPED_VENDOR.
+L.CHAT_SKIPPED_OWNED = " Skipped %s -- already own enough."
+
 L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
 L.CORE_LOGIN_MESSAGE = "%s loaded. |cffaaaaaa/bestcraft|r for options."
 
