@@ -91,6 +91,56 @@ return function(stub, T)
         T.AssertFalse(allRequiredResolved, "expected false -- a required slot had no confident pick")
     end)
 
+    -- Issue #26: a spark slot (Masterwork Sin'dorei Band) lists Spark of Radiance and Spark of
+    -- Tides, no quality on either, both bind-on-pickup -- confirmed in-game.
+    local function SparkSlot()
+        return {
+            reagentSlotSchematics = {
+                {
+                    dataSlotIndex = 5, required = true, quantityRequired = 2,
+                    orderSource = CraftingOrderReagentSource.Customer,
+                    reagents = { { itemID = 232875 }, { itemID = 274476 } },
+                },
+            },
+        }
+    end
+
+    T.Test("skips a multi-option required slot when every option is bind-on-pickup", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemBindTypes = { [232875] = ItemBind.OnAcquire, [274476] = ItemBind.OnAcquire },
+        })
+        local entries, allRequiredResolved, _, excludedForOwned =
+            loaded.ns.OrderScreen:GetChosenReagentEntries(SparkSlot())
+        T.AssertEqual(#entries, 0, "expected no entries -- nothing on the slot is buyable")
+        T.AssertTrue(allRequiredResolved, "expected true -- an unbuyable slot isn't unresolved")
+        T.AssertEqual(#excludedForOwned, 0, "expected nothing reported as owned")
+    end)
+
+    T.Test("reports a multi-option required slot as owned when any one option covers it", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemCounts = { [274476] = 3 },
+        })
+        local entries, allRequiredResolved, _, excludedForOwned =
+            loaded.ns.OrderScreen:GetChosenReagentEntries(SparkSlot())
+        T.AssertEqual(#entries, 0, "expected no entries")
+        T.AssertTrue(allRequiredResolved, "expected true -- the slot is already covered")
+        T.AssertEqual(#excludedForOwned, 1, "expected the owned option reported")
+        T.AssertEqual(excludedForOwned[1], 274476, "expected the option actually owned")
+    end)
+
+    T.Test("keeps a multi-option required slot unresolved when any option is buyable", function()
+        local loaded = stub.LoadAddon(".", "BestCraft.toc", {
+            addonsLoaded = { Auctionator = true },
+            itemBindTypes = { [232875] = ItemBind.OnAcquire },
+            itemCounts = { [274476] = 1 },
+        })
+        local entries, allRequiredResolved = loaded.ns.OrderScreen:GetChosenReagentEntries(SparkSlot())
+        T.AssertEqual(#entries, 0, "expected no entries -- still not guessing between buyable options")
+        T.AssertFalse(allRequiredResolved, "expected false -- partial ownership doesn't settle it")
+    end)
+
     T.Test("skips an optional slot entirely, even one with a single, unambiguous option", function()
         -- Confirmed by testing (issue feedback): a "finishing reagent" / embellishment slot
         -- with exactly one listed option was going straight onto the shopping list even though

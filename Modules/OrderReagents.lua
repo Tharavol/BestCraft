@@ -139,6 +139,44 @@ local function GetOwnedCount(itemID)
     return 0
 end
 
+-- A required slot PickReagent couldn't resolve -- several distinct candidates, none with a
+-- quality tier -- isn't necessarily something the shopping list needs to resolve at all
+-- (issue #26). Confirmed in-game against a real spark recipe (Masterwork Sin'dorei Band): the
+-- spark slot is required and Customer-sourced, but lists both Spark of Radiance and Spark of
+-- Tides, no quality on either, and both are bind-on-pickup -- so there's nothing to pick
+-- between on the AH anyway. Still no guessing between distinct *buyable* candidates; this only
+-- settles the slot when the answer doesn't depend on which one the player meant:
+-- - "owned": enough of any one candidate is already owned (same reasoning as issue #23).
+-- - "unbuyable": every candidate is bind-on-pickup. An empty candidate list isn't vacuously
+--   "every", and an uncached candidate reads as not-BoP (see IsBindOnPickup), so both stay
+--   unresolved rather than being silently dropped.
+-- Returns nil when neither applies, i.e. the slot is genuinely unresolved.
+---@return string? outcome "owned" or "unbuyable"
+---@return number? itemID The owned candidate, for outcome == "owned"
+local function SettleAmbiguousSlot(slot)
+    local reagents = slot.reagents
+    if not reagents or #reagents == 0 then
+        return nil
+    end
+
+    -- No quantityRequired means "owned" can't be judged at all -- not "zero needed," which
+    -- would trivially count anything as covered.
+    if slot.quantityRequired then
+        for _, candidate in ipairs(reagents) do
+            if GetOwnedCount(candidate.itemID) >= slot.quantityRequired then
+                return "owned", candidate.itemID
+            end
+        end
+    end
+
+    for _, candidate in ipairs(reagents) do
+        if not IsBindOnPickup(candidate.itemID) then
+            return nil
+        end
+    end
+    return "unbuyable"
+end
+
 -- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
 -- schematic's *required* reagent slots only, choosing one item per slot and its needed
 -- quantity (full quantityRequired minus whatever's already owned). Optional slots -- finishing
@@ -168,6 +206,8 @@ end
 -- *crafter* must personally provide, not something the customer placing the order is meant to
 -- supply -- but that can only actually occur on a required slot in practice, so it's folded
 -- into the same required-slot guard rather than a fourth separate reason.
+-- A slot PickReagent can't resolve gets the #1/#3 checks applied across all its candidates
+-- instead (see SettleAmbiguousSlot, issue #26) before it's counted as unresolved.
 -- None of these exclusions count against allRequiredResolved below -- none was ever something
 -- the customer's shopping list should resolve via the AH in the first place, unlike a
 -- genuinely unresolved quality pick.
@@ -211,7 +251,12 @@ function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
                     })
                 end
             elseif not itemID then
-                allRequiredResolved = false
+                local outcome, ownedItemID = SettleAmbiguousSlot(slot)
+                if outcome == "owned" then
+                    table.insert(excludedForOwned, ownedItemID)
+                elseif not outcome then
+                    allRequiredResolved = false
+                end
             end
         end
     end

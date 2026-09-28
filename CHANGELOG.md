@@ -2,6 +2,14 @@
 
 All notable changes to the BestCraft addon are documented in this file.
 
+## [1.0.1] - 2026-09-28
+
+- Fix the "+ Shopping List" button staying grayed out on spark recipes (#26). A required
+  slot offering several items with no quality tier (e.g. Spark of Radiance / Spark of Tides)
+  used to mark the whole order unresolved. It's now reported as already owned when enough of
+  any one item is owned, and skipped when every item is bind-on-pickup. A slot with a
+  buyable item to choose between is still left unresolved rather than guessed at.
+
 ## [1.0.0] - 2026-08-18
 
 - Initial project scaffolding
