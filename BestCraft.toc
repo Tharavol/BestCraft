@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105
 ## Title: BestCraft
 ## Notes: Adds a button to the Place Crafting Order screen that builds and keeps updated an Auctionator shopping list for the right-quality reagents for a crafting order
 ## Author: Tharavol, Claude
