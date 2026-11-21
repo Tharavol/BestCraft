@@ -2,6 +2,17 @@
 
 All notable changes to the BestCraft addon are documented in this file.
 
+## [Unreleased]
+
+### Internal
+
+- Trim comments that narrated history or restated code (#28).
+- Call `C_TradeSkillUI.GetItemReagentQualityByItemInfo`, `C_TooltipInfo.GetItemByID`,
+  `C_Item.GetItemCount` and `transaction:GetRecipeSchematic` directly instead of through
+  `pcall`; `pcall` stays only around Auctionator `API.v1` calls (#29). Drop the dead
+  `GetAddOnMetadata` global fallback.
+- Drop `## X-ReleaseNotes` from the TOC; the feature summary lives in README.md (#30).
+
 ## [1.0.1] - 2026-09-28
 
 - Fix the "+ Shopping List" button staying grayed out on spark recipes (#26). A required

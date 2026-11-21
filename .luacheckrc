@@ -33,7 +33,6 @@ read_globals = {
     "GameTooltip_AddErrorLine",
     "GameTooltip_AddNormalLine",
     "GameTooltip_Hide",
-    "GetAddOnMetadata",
     "hooksecurefunc",
     "Item",
     "Settings",

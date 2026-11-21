@@ -1,52 +1,26 @@
 -- OrderShoppingList.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 --
--- Builds an Auctionator shopping list for the order screen's current recipe -- every order,
--- not just recraft ones. Originally recraft-only: CraftSim.CRAFTQ:IsRecipeQueueable explicitly
--- refuses any recipeData.isRecraft recipe (Modules/CraftQueue/CraftQueue.lua:1303), for a real
--- reason (recrafting needs a specific target item's GUID, which fits "I'm personally
--- recrafting my own item," not "I'm a customer commissioning someone else's recraft"), so
--- recraft orders got their own Auctionator-only path while normal orders queued into
--- CraftSim.CRAFTQ instead. Confirmed in-game (issue #18) that the CraftQueue path actually
--- worked -- but per feedback, a single shopping-list-only flow for every order is simpler and
--- is what's wanted, so that's now the only path; see docs/craftsim-recipedata-notes.md for the
--- retired CraftQueue-based approach, kept for the record.
---
--- Builds via Auctionator.API.v1 -- Auctionator's own documented public API, the same one
--- CraftSim's own CreateAuctionatorShoppingList used (Modules/CraftQueue/CraftQueue.lua:
--- 1251,1254) and ShoppingConverter reads back out of.
+-- Builds an Auctionator shopping list (via Auctionator.API.v1) for the order screen's current
+-- recipe, recraft or not (#18). API.v1 calls raise on bad input, hence the pcalls.
 
 local ADDON_NAME, ns = ...
 
 local OrderScreen = ns.OrderScreen
 local L = ns.L
 
--- Tracks each order's last shopping-list contribution (issue #24), so re-clicking the button
--- for the same order updates its own line items instead of doubling them, while a genuinely
--- different order needing the same reagent still adds on top rather than replacing it. Same
--- weak-keyed-by-order pattern as OrderMinimumQuality.lua's lastAppliedSpellIDByOrder, for the
--- same reason: closed drafts shouldn't linger. See ApplyTermDeltas/CreateShoppingList below.
+-- Each order's last contribution (#24), so re-clicking replaces it instead of doubling it.
+-- Weak-keyed so closed drafts don't linger.
 local lastContributionByOrder = setmetatable({}, { __mode = "k" })
 
 function OrderScreen:IsAuctionatorAvailable()
     return Auctionator ~= nil and Auctionator.API ~= nil and Auctionator.API.v1 ~= nil
 end
 
--- Returns the chosen reagent entries for whatever recipe is currently on the order screen
--- (recraft or not -- the schematic shape needs no special-casing here, see
--- docs/order-screen-research.md), or nil if there's no order/recipe currently loaded.
---
--- Prefers the lowest-quality reagent per slot, not the highest, when the recipe's *output*
--- has no quality tiers of its own -- confirmed against a real order (Thalassian Treatise on
--- Enchanting) that a recipe like this exists and that paying for premium reagents buys
--- nothing there, since the crafted result can't rank up regardless. Detected via
--- Form.minQualityIDs, the same per-recipe data issue #17's Minimum Quality default already
--- reads (index 1 is a "None" placeholder, not a real tier -- see
--- docs/minimum-quality-notes.md -- so #minQualityIDs <= 1 means no real tier exists at all;
--- nil means the same thing, not "not yet known" -- see GetShoppingEntries below, issue #19).
+-- Chosen reagent entries for the current recipe, or nil if none is loaded. Prefers the
+-- lowest quality when the output has no quality tiers (e.g. Thalassian Treatise on Enchanting).
 ---@return table? entries
----@return boolean? allRequiredResolved See OrderReagents.lua's GetChosenReagentEntries.
----   nil (not false) when entries itself is nil -- there's nothing to qualify.
+---@return boolean? allRequiredResolved See GetChosenReagentEntries; nil when entries is nil.
 ---@return string? recipeName schematicInfo.name, for the chat confirmation on success.
 ---@return table? excludedForVendor See OrderReagents.lua's GetChosenReagentEntries.
 ---@return table? excludedForOwned See OrderReagents.lua's GetChosenReagentEntries.
@@ -57,22 +31,13 @@ function OrderScreen:GetShoppingEntries()
         return nil
     end
 
-    local ok, schematicInfo = pcall(transaction.GetRecipeSchematic, transaction)
-    if not ok or not schematicInfo then
+    local schematicInfo = transaction:GetRecipeSchematic()
+    if not schematicInfo then
         return nil
     end
 
-    -- nil means "no real tier," not "not yet known" -- confirmed in-game against a real
-    -- Public order (issue #19, "Thalassian Treatise on Enchanting"): Blizzard's own
-    -- `self.minQualityIDs = recipeID and C_TradeSkillUI.GetQualitiesForRecipe(recipeID)` (see
-    -- OrderMinimumQuality.lua's header comment) runs unconditionally once a recipe is loaded,
-    -- independent of order type, so by the time GetShoppingEntries runs (a recipe/transaction
-    -- already resolved -- see the guard above) this has already settled one way or the other.
-    -- A prior version of this check required minQualityIDs to be non-nil with length <= 1,
-    -- reasoning nil might mean "not loaded yet" -- but GetQualitiesForRecipe genuinely returns
-    -- nil (not an empty/length-1 table) for a recipe with no quality tiers at all, so that
-    -- version silently fell through to the highest-quality default on exactly the recipes this
-    -- was meant to catch.
+    -- Index 1 is a "None" placeholder (docs/minimum-quality-notes.md). nil means no tiers, not
+    -- "not loaded yet": GetQualitiesForRecipe returns nil for tierless recipes (#19).
     local minQualityIDs = form.minQualityIDs
     local preferLowestQuality = minQualityIDs == nil or #minQualityIDs <= 1
 
@@ -81,13 +46,10 @@ function OrderScreen:GetShoppingEntries()
     return entries, allRequiredResolved, schematicInfo.name, excludedForVendor, excludedForOwned
 end
 
--- Builds Auctionator search strings, a parallel "Name [xN], Name [xN], ..." human-readable
--- summary, and the raw term tables underneath both (for ApplyTermDeltas' merge below) from the
--- same entries together, so each entry's item name is only looked up once.
+-- Search strings, a "Name [xN], ..." summary, and the underlying term tables, in one pass.
 ---@return table searchStrings
 ---@return string summary
----@return table terms Array of { searchString, tier, quantity, isExact } -- the term tables
----   ConvertToSearchString/ConvertFromSearchString both use, parallel to searchStrings.
+---@return table terms { searchString, tier, quantity, isExact }, parallel to searchStrings.
 local function BuildSearchStringsAndSummary(entries)
     local searchStrings = {}
     local terms = {}
@@ -113,19 +75,10 @@ local function BuildSearchStringsAndSummary(entries)
     return searchStrings, table.concat(summaryParts, ", "), terms
 end
 
--- Applies signed quantity deltas to an existing shopping list's search strings: a delta
--- matching an existing line (same item name and quality tier, ignoring quantity -- the same
--- matching Auctionator itself uses, confirmed via CraftSim's working read-compare-write
--- pattern, CraftSim/Modules/Shopping/Shopping.lua:135-189's AddSearchTermToShoppingList) has
--- its quantity adjusted by delta.quantity; a positive delta with no match becomes a new line,
--- a negative delta with no match is a no-op (nothing to subtract from -- see CreateShoppingList
--- below, where this happens if a previous contribution's line was deleted by the player in the
--- meantime). A line whose quantity is adjusted to zero or below is dropped entirely.
---
--- Returns the full array to pass to CreateShoppingList, which replaces a list's *entire*
--- contents with whatever array it's given (see this file's own earlier header comment) -- so
--- passing back every existing line plus the deltas applied is how a merge happens without ever
--- calling a per-item Alter/Delete API.
+-- Applies signed quantity deltas to a list's search strings. A delta matches a line by name
+-- and tier (as Auctionator does); unmatched positive deltas add a line, unmatched negative ones
+-- are ignored, and lines at zero or below are dropped. Returns the full array, since
+-- CreateShoppingList replaces a list's entire contents.
 ---@param existingSearchStrings table
 ---@param deltaTerms table Array of { searchString, tier, quantity } -- quantity is signed.
 ---@return table result
@@ -133,8 +86,7 @@ local function ApplyTermDeltas(existingSearchStrings, deltaTerms)
     local lines = {}
     for i, searchString in ipairs(existingSearchStrings) do
         local ok, term = pcall(Auctionator.API.v1.ConvertFromSearchString, ADDON_NAME, searchString)
-        -- Unparseable (shouldn't normally happen) is kept as an opaque passthrough line, via
-        -- _raw, so nothing real already on the player's list is silently dropped.
+        -- Unparseable lines pass through untouched.
         lines[i] = (ok and term) or { _raw = searchString }
     end
 
@@ -172,14 +124,11 @@ local function ApplyTermDeltas(existingSearchStrings, deltaTerms)
     return result
 end
 
--- Exposed as a plain field (not a colon method -- ApplyTermDeltas never uses self) so
--- OrderShoppingPurchases.lua can reuse it for issue #21's purchase-driven decrements, the same
--- delta-application machinery built here for issue #24's merge. Call as
--- OrderScreen.ApplyTermDeltas(existingSearchStrings, deltaTerms), not with a colon.
+-- Plain field, not a method: OrderShoppingPurchases.lua calls OrderScreen.ApplyTermDeltas(...).
 OrderScreen.ApplyTermDeltas = ApplyTermDeltas
 
 ---@param terms table
----@return table negated Same terms with quantity sign flipped, for undoing a prior contribution.
+---@return table negated Same terms with quantity negated.
 local function NegateTerms(terms)
     local negated = {}
     for i, term in ipairs(terms) do
@@ -188,10 +137,7 @@ local function NegateTerms(terms)
     return negated
 end
 
--- Names every itemID in an exclusion list (vendor-purchasable, issue #20; already owned, issue
--- #23) for a chat note explaining why the list is shorter than the recipe's full reagent
--- count -- "" when nothing was excluded, so callers can append it unconditionally without an
--- extra branch.
+-- Chat note naming excluded itemIDs (#20, #23); "" when none, so callers can always append it.
 ---@param excluded table? itemIDs
 ---@param template string L.CHAT_SKIPPED_VENDOR or L.CHAT_SKIPPED_OWNED -- one %s for the names.
 ---@return string note
@@ -207,10 +153,7 @@ local function BuildSkippedNote(excluded, template)
 end
 
 ---@return boolean success
----@return string? message On failure, why. On success, a chat-ready confirmation of the
----   recipe and materials added (issue feedback: the player asked what was added and why),
----   plus a note of anything skipped as vendor-purchasable (issue #20) or already owned
----   (issue #23).
+---@return string? message Failure reason, or the chat confirmation plus any skipped-items note.
 function OrderScreen:CreateShoppingList()
     if not self:IsAuctionatorAvailable() then
         return false, L.ERROR_NO_AUCTIONATOR
@@ -234,17 +177,7 @@ function OrderScreen:CreateShoppingList()
         return false, L.ERROR_UNRESOLVED_ITEM_NAMES
     end
 
-    -- Merge into an existing list under this name rather than replacing it (issue #24), so a
-    -- second order's click adds to the first order's list instead of discarding it. Existing
-    -- items keyed by the same item+tier get their quantity summed; anything else on the
-    -- player's list is left alone.
-    --
-    -- This order's own *previous* contribution (if any) is undone first via a negated delta,
-    -- so re-clicking the button for the same order updates its own line items instead of
-    -- endlessly doubling them on every click -- the same guarantee the old delete-then-recreate
-    -- approach gave for a single order, now extended to work alongside genuine cross-order
-    -- merging. order is keyed by identity (the order screen's own order object), the same
-    -- weak-table pattern OrderMinimumQuality.lua uses to track per-draft state.
+    -- Merge into the existing list (#24), first undoing this order's previous contribution.
     local order = self.form and self.form.order
     local finalSearchStrings = searchStrings
 
@@ -265,9 +198,7 @@ function OrderScreen:CreateShoppingList()
             end
             finalSearchStrings = ApplyTermDeltas(existingSearchStrings, deltas)
         end
-        -- else: reading the existing list failed -- falls through to finalSearchStrings =
-        -- searchStrings (this order's items alone), the same failure mode a missing/absent
-        -- ListManager already has below.
+        -- On a read failure, falls back to this order's items alone.
     end
 
     local ok = pcall(Auctionator.API.v1.CreateShoppingList, ADDON_NAME, L.SHOPPING_LIST_NAME, finalSearchStrings)

@@ -1,17 +1,7 @@
 -- enUS.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 --
--- User-facing strings, structured for future translation even though enUS is the only locale
--- shipped for now (issue #9). A plain ns.L table -- no CraftSim L() pattern to match against,
--- since BestCraft no longer depends on or interoperates with CraftSim (see the
--- CraftSim-retirement pivot, docs/craftsim-recipedata-notes.md). Loads before Core.lua and
--- every module that shows text to the player.
---
--- Two messages ("no reagents to shop for", "a required reagent is unresolved") originally
--- existed as separate near-duplicate literals in the tooltip path (OrderShoppingButton.lua)
--- and the click-failure path (OrderShoppingList.lua) -- collapsed to single shared keys here
--- (STATUS_NO_REAGENTS, STATUS_UNRESOLVED_REQUIRED) since they were already word-for-word
--- identical, just typed out twice.
+-- User-facing strings (#9). Loads before Core.lua and every module that shows text.
 
 local _, ns = ...
 
@@ -32,19 +22,13 @@ L.ERROR_NO_AUCTIONATOR = "Auctionator is required to build a shopping list for t
 L.ERROR_UNRESOLVED_ITEM_NAMES = "Couldn't resolve item names for this order's reagents yet -- try again in a moment."
 L.ERROR_CREATE_FAILED = "Couldn't create the Auctionator shopping list."
 
--- Confirms what was actually added and why, per feedback -- printed on every successful
--- CreateShoppingList call. %s/%s = recipe name, "Name [xN], Name [xN], ..." materials summary.
+-- %s/%s = recipe name, "Name [xN], ..." materials summary.
 L.CHAT_LIST_CREATED = "Shopping list ready for \"%s\": %s"
 L.CHAT_UNKNOWN_RECIPE = "this order"
 
--- Issue #20: reagents cheaply available from an NPC vendor are left off the shopping list
--- entirely rather than shopped for on the AH -- this explains why the list came up short.
--- %s = comma-joined item names. Appended straight onto CHAT_LIST_CREATED/STATUS_NO_REAGENTS,
--- so it leads with its own space rather than the caller adding one.
+-- #20, #23. %s = comma-joined item names. Appended directly, so leads with a space.
 L.CHAT_SKIPPED_VENDOR = " Skipped %s -- available from a vendor."
 
--- Issue #23: reagents already owned (bags/bank/reagent bank/Warband bank) at the full
--- quantity needed are left off the list too. Same %s convention as CHAT_SKIPPED_VENDOR.
 L.CHAT_SKIPPED_OWNED = " Skipped %s -- already own enough."
 
 L.CORE_REQUIRES_AUCTIONATOR = "requires Auctionator to be installed and enabled."
@@ -52,9 +36,7 @@ L.CORE_LOGIN_MESSAGE = "%s loaded. |cffaaaaaa/bestcraft|r for options."
 
 L.SHOPPING_LIST_NAME = "BestCraft"
 
--- Issue #16: standardized slash commands / options panel, matching conventions from
--- Crosshairs (slash command set, COMMANDS-table dispatch) and ShoppingConverter (login
--- message toggle, Options.lua structure) -- see those repos' Core.lua/Commands.lua/Options.lua.
+-- Slash commands and options panel (#16).
 L.OPTIONS_TITLE = "BestCraft"
 L.OPTIONS_BUTTON_ENABLED_LABEL = "Enable the order-screen shopping list button"
 L.OPTIONS_BUTTON_ENABLED_TOOLTIP = "Shows or hides the \"+ Shopping List\" button on the Place Crafting "

@@ -1,34 +1,18 @@
 -- OrderReagents.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 --
--- Picks a reagent for each slot on the order screen's recipe schematic, with no independent
--- optimization -- see docs/order-screen-research.md for how this shape was confirmed in-game
--- (docs/craftsim-recipedata-notes.md also covers it, cross referenced against CraftSim's own
--- source, though that doc's specific RecipeData-construction path was later retired -- see
--- OrderShoppingList.lua).
---
--- Highest quality by default, but lowest when the recipe's *output* has no quality tiers at
--- all -- confirmed by user testing against a real order (Thalassian Treatise on Enchanting):
--- paying extra for premium reagents buys nothing if the crafted result can't rank up, so
--- OrderShoppingList.lua passes preferLowestQuality=true in that case (see its own comment for
--- how it's detected, reusing the same Form.minQualityIDs data issue #17's work already reads).
---
--- Deliberately does not read `AllocateBestQualityCheckbox` or `transaction:GetAllocations()`
--- at all: quality is picked directly from each slot's candidate list
--- (C_TradeSkillUI.GetItemReagentQualityByItemInfo), independent of whatever the native
--- checkbox is set to -- the checkbox being off doesn't change anything here, there's no
--- unresolved case to handle for it.
+-- Picks a reagent for each slot of the order screen's recipe schematic (see
+-- docs/order-screen-research.md). Highest quality by default; lowest when the recipe's output
+-- has no quality tiers, since premium reagents buy nothing there (OrderShoppingList.lua).
+-- Quality comes from each slot's candidate list, not AllocateBestQualityCheckbox or
+-- transaction:GetAllocations().
 
 local ADDON_NAME, ns = ...
 
 local OrderScreen = ns.OrderScreen
 
--- A slot's `reagents` array lists every item choice valid for that slot. Multiple entries
--- can mean either quality ranks of the same reagent (pick the highest or lowest, depending on
--- preferLowestQuality) or genuinely distinct reagent choices with no quality tier at all (e.g.
--- different enchant essence flavors) -- picking between those would be guessing at player
--- intent, not reading an answer the game already computed, so those are left alone rather
--- than guessed at.
+-- Multiple candidates are either quality ranks of one reagent (pick by tier) or distinct
+-- reagents with no tier (e.g. essence flavors), which are left unresolved rather than guessed.
 local function PickReagent(slot, preferLowestQuality)
     local reagents = slot.reagents
     if not reagents or #reagents == 0 then
@@ -42,8 +26,8 @@ local function PickReagent(slot, preferLowestQuality)
     local pickedItemID, pickedQuality
     local anyQuality = false
     for _, candidate in ipairs(reagents) do
-        local ok, quality = pcall(C_TradeSkillUI.GetItemReagentQualityByItemInfo, candidate.itemID)
-        if ok and quality and quality > 0 then
+        local quality = C_TradeSkillUI.GetItemReagentQualityByItemInfo(candidate.itemID)
+        if quality and quality > 0 then
             anyQuality = true
             local better = not pickedQuality
                 or (preferLowestQuality and quality < pickedQuality)
@@ -62,41 +46,17 @@ local function PickReagent(slot, preferLowestQuality)
     return nil
 end
 
--- Bind-on-pickup items can never be sold on the auction house, full stop -- confirmed in-game
--- against a real order: a required, Customer-sourced reagent ("Fused Vitality", orderSource ==
--- Enum.CraftingOrderReagentSource.Customer, so NOT caught by the orderSource check below)
--- still returned zero Auctionator search results, because the item itself is BoP. bindType is
--- C_Item.GetItemInfo's 14th return value (Blizzard_APIDocumentationGenerated/
--- ItemDocumentation.lua); MayReturnNothing == true for uncached items, in which case this
--- returns nil and fails open (not excluded) -- an occasional un-filtered BoP item if data
--- hasn't loaded yet is the same failure mode as today, not a regression, whereas excluding on
--- unknown status risks dropping a legitimately purchasable reagent whose info just hasn't
--- cached yet.
+-- BoP items can't be on the AH even when Customer-sourced (e.g. "Fused Vitality"). bindType is
+-- GetItemInfo's 14th return; uncached items return nothing and fail open (not excluded).
 local function IsBindOnPickup(itemID)
     local bindType = select(14, C_Item.GetItemInfo(itemID))
     return bindType == Enum.ItemBind.OnAcquire
 end
 
--- Some reagents are cheaply available from an NPC vendor even though Auctionator can also find
--- AH listings for them -- confirmed in-game against a real order (issue #20): "Lexicologist's
--- Vellum" had 39s+ AH listings, but paying that is pointless when a vendor sells it directly
--- for less. sellPrice (what a vendor *pays you*) doesn't tell you this, and class/subclass/
--- bindType/orderSource all came back identical between it and the recipe's other, genuinely
--- AH-only reagents when compared side-by-side -- none of those are usable signals.
---
--- Two signals, tried in order:
--- 1. Auctionator.API.v1.GetVendorPriceByItemID -- Auctionator's own maintained vendor-price
---    database (the same data behind its "cheaper than vendor" AH tags; confirmed via
---    CraftSim's use of it, CraftSim/DataSource/PriceAPIs.lua:185). Authoritative when it has
---    an answer, but only covers items that database actually knows about, so it's not relied
---    on alone.
--- 2. Tooltip flavor-text scan, as a fallback for whatever #1 doesn't cover -- confirmed by
---    comparing tooltip text side-by-side for a real vendor-sold and a real AH-only reagent
---    from the same recipe: Blizzard's own flavor text says "Can be purchased from vendors."
---    for the former, "Can be bought and sold on the Auction House." for the latter. Read via
---    C_TooltipInfo (not a live GameTooltip widget, which needs a real frame to anchor to),
---    scanning every line for "vendor" rather than matching the flavor text verbatim, since the
---    exact wording isn't a documented contract -- just the two samples actually seen.
+-- Vendor-sold reagents also have pricier AH listings (#20). sellPrice, class, bindType and
+-- orderSource don't distinguish them. Tries Auctionator's vendor-price database first, then
+-- scans tooltip lines for "vendor" (flavor text "Can be purchased from vendors."; the wording
+-- isn't a documented contract, so no exact match).
 local function IsVendorPurchasable(itemID)
     if Auctionator and Auctionator.API and Auctionator.API.v1 and Auctionator.API.v1.GetVendorPriceByItemID then
         local ok, vendorPrice = pcall(Auctionator.API.v1.GetVendorPriceByItemID, ADDON_NAME, itemID)
@@ -105,8 +65,8 @@ local function IsVendorPurchasable(itemID)
         end
     end
 
-    local ok, info = pcall(C_TooltipInfo.GetItemByID, itemID)
-    if not ok or not info or not info.lines then
+    local info = C_TooltipInfo.GetItemByID(itemID)
+    if not info or not info.lines then
         return false
     end
     for _, line in ipairs(info.lines) do
@@ -117,40 +77,17 @@ local function IsVendorPurchasable(itemID)
     return false
 end
 
--- Reagents already sitting in inventory shouldn't be shopped for again (issue #23) -- buying
--- more of something already owned, at the resolved quality tier, is wasted gold. Since
--- PickReagent above already resolves a slot down to one specific itemID (a different quality
--- tier of the same reagent is a different itemID, per its own comment), checking that same
--- itemID's owned count already accounts for quality with no extra tier-matching needed.
---
--- C_Item.GetItemCount(itemID, includeBank, includeCharges, includeReagentBank, includeWarband)
--- -- confirmed in use with this exact argument shape across CraftSim's own source (e.g.
--- CraftSim/Modules/CraftQueue/UI.lua:394, CraftSim/Classes/SalvageReagentSlot.lua:44). Bags are
--- always included regardless of these flags; bank, reagent bank, and Warband bank are asked
--- for too, but not "charges" (a consumable-specific concept unrelated to crafting reagent
--- stacks). Fails open to 0 (i.e. "own none") on a pcall failure, the safer default -- treating
--- an API error as "already have plenty" would risk silently dropping a genuinely needed
--- reagent from the list.
+-- Owned count (#23); each quality tier is its own itemID, so no tier matching is needed.
+-- Args: itemID, includeBank, includeCharges, includeReagentBank, includeWarband.
 local function GetOwnedCount(itemID)
-    local ok, count = pcall(C_Item.GetItemCount, itemID, true, false, true, true)
-    if ok and count then
-        return count
-    end
-    return 0
+    return C_Item.GetItemCount(itemID, true, false, true, true)
 end
 
--- A required slot PickReagent couldn't resolve -- several distinct candidates, none with a
--- quality tier -- isn't necessarily something the shopping list needs to resolve at all
--- (issue #26). Confirmed in-game against a real spark recipe (Masterwork Sin'dorei Band): the
--- spark slot is required and Customer-sourced, but lists both Spark of Radiance and Spark of
--- Tides, no quality on either, and both are bind-on-pickup -- so there's nothing to pick
--- between on the AH anyway. Still no guessing between distinct *buyable* candidates; this only
--- settles the slot when the answer doesn't depend on which one the player meant:
--- - "owned": enough of any one candidate is already owned (same reasoning as issue #23).
--- - "unbuyable": every candidate is bind-on-pickup. An empty candidate list isn't vacuously
---   "every", and an uncached candidate reads as not-BoP (see IsBindOnPickup), so both stay
---   unresolved rather than being silently dropped.
--- Returns nil when neither applies, i.e. the slot is genuinely unresolved.
+-- Settles a slot PickReagent couldn't resolve, when the answer doesn't depend on which
+-- candidate the player meant (#26, e.g. two BoP sparks):
+-- - "owned": enough of any one candidate is owned.
+-- - "unbuyable": every candidate is BoP (an empty list or uncached candidate is not).
+-- Returns nil when the slot is genuinely unresolved.
 ---@return string? outcome "owned" or "unbuyable"
 ---@return number? itemID The owned candidate, for outcome == "owned"
 local function SettleAmbiguousSlot(slot)
@@ -159,8 +96,7 @@ local function SettleAmbiguousSlot(slot)
         return nil
     end
 
-    -- No quantityRequired means "owned" can't be judged at all -- not "zero needed," which
-    -- would trivially count anything as covered.
+    -- Without quantityRequired, "owned" can't be judged.
     if slot.quantityRequired then
         for _, candidate in ipairs(reagents) do
             if GetOwnedCount(candidate.itemID) >= slot.quantityRequired then
@@ -177,55 +113,18 @@ local function SettleAmbiguousSlot(slot)
     return "unbuyable"
 end
 
--- Builds a flat list of { itemID, quantity, dataSlotIndex, required } from a recipe
--- schematic's *required* reagent slots only, choosing one item per slot and its needed
--- quantity (full quantityRequired minus whatever's already owned). Optional slots -- finishing
--- reagents, embellishments, and the like -- are skipped entirely regardless of whether they'd
--- resolve to a confident pick: confirmed by testing (a slot with a single, unambiguous option
--- was going straight onto the shopping list even though it's an optional finishing reagent, not
--- something the recipe actually needs) that "resolvable" and "worth shopping for" are different
--- questions, and this only ever answers the second one for *required* slots. Slots with no
--- confident choice are omitted too, not guessed. OrderShoppingList.lua reshapes the result into
--- Auctionator search strings.
---
--- Three separate reasons a required slot's reagent can still be left off the list, all
--- confirmed in-game against real orders except #3 (per user request, issue #23, not yet
--- confirmed live):
--- 1. The resolved item is bind-on-pickup (see IsBindOnPickup) -- can't be bought regardless of
---    who's meant to provide it, Customer-sourced or not (this is what actually caught "Fused
---    Vitality"; its orderSource was Customer, not Crafter, so orderSource alone didn't cover
---    it).
--- 2. The resolved item is vendor-purchasable (see IsVendorPurchasable) -- technically buyable
---    on the AH too, but pointlessly expensive there, so it's reported back separately rather
---    than silently dropped (see excludedForVendor below).
--- 3. The full quantityRequired is already owned (see GetOwnedCount) -- reported back
---    separately too (see excludedForOwned below). A *partial* owned count reduces the entry's
---    quantity instead of excluding it outright.
--- orderSource == Enum.CraftingOrderReagentSource.Crafter is checked too -- Blizzard's own
--- client source (PROFESSIONS_ORDER_CRAFTER_REQUIRED_REAGENT) says these are reagents the
--- *crafter* must personally provide, not something the customer placing the order is meant to
--- supply -- but that can only actually occur on a required slot in practice, so it's folded
--- into the same required-slot guard rather than a fourth separate reason.
--- A slot PickReagent can't resolve gets the #1/#3 checks applied across all its candidates
--- instead (see SettleAmbiguousSlot, issue #26) before it's counted as unresolved.
--- None of these exclusions count against allRequiredResolved below -- none was ever something
--- the customer's shopping list should resolve via the AH in the first place, unlike a
--- genuinely unresolved quality pick.
+-- Builds { itemID, quantity, dataSlotIndex, required } entries from required slots only
+-- (optional/finishing slots are never shopped for), quantity being quantityRequired minus the
+-- owned count. Crafter-sourced slots are skipped (the crafter supplies them). A resolved
+-- reagent is left off when it is vendor-purchasable (#20), BoP, or fully owned (#23); none of
+-- these count against allRequiredResolved.
 ---@param schematicInfo table Return value of transaction:GetRecipeSchematic()
----@param preferLowestQuality boolean? True picks the cheapest ranked reagent per slot instead
----   of the priciest -- for recipes whose output has no quality tiers to benefit from a
----   premium reagent. Falsy (the default) keeps the original highest-quality behavior.
+---@param preferLowestQuality boolean? Pick the lowest ranked reagent instead of the highest.
 ---@return table entries
----@return boolean allRequiredResolved False if a required, purchasable-in-principle slot had no
----   confident pick -- e.g. no candidate reports a quality tier yet. Skipping such a slot
----   silently would hand back an incomplete shopping list with no indication a required
----   reagent is missing, so callers should refuse to act (rather than proceed) when this is
----   false.
----@return table excludedForVendor itemIDs left off the list because IsVendorPurchasable was
----   true -- callers should tell the player what was skipped and why (issue #20), rather than
----   silently shrinking the list with no explanation.
----@return table excludedForOwned itemIDs left off the list because the full quantityRequired
----   was already owned (issue #23) -- same reporting reasoning as excludedForVendor.
+---@return boolean allRequiredResolved False if a required slot had no confident pick; callers
+---   should refuse to act rather than build an incomplete list.
+---@return table excludedForVendor itemIDs skipped as vendor-purchasable, for the chat note.
+---@return table excludedForOwned itemIDs skipped as already owned, for the chat note.
 function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
     local entries = {}
     local excludedForVendor = {}
@@ -234,8 +133,7 @@ function OrderScreen:GetChosenReagentEntries(schematicInfo, preferLowestQuality)
     for _, slot in ipairs((schematicInfo and schematicInfo.reagentSlotSchematics) or {}) do
         if slot.required and slot.orderSource ~= Enum.CraftingOrderReagentSource.Crafter then
             local itemID = PickReagent(slot, preferLowestQuality)
-            -- Checked before IsBindOnPickup below: an item could in principle be both, and a
-            -- vendor exclusion is the more informative one to report back to the player.
+            -- Before the BoP check: a vendor exclusion is the more useful one to report.
             if itemID and IsVendorPurchasable(itemID) then
                 table.insert(excludedForVendor, itemID)
             elseif itemID and not IsBindOnPickup(itemID) then

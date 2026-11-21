@@ -1,54 +1,16 @@
 -- OrderShoppingButton.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 --
--- Adds a "+ Shopping List" button to the order screen for every order (recraft or not), via
--- OrderShoppingList.lua. Originally two modes -- normal orders queued into CraftSim.CRAFTQ,
--- only recraft orders (which CraftSim.CRAFTQ refuses outright) got the Auctionator path -- but
--- per feedback, a single shopping-list-only flow for every order is simpler and is what's
--- wanted, so the CraftQueue path was retired even though it worked (confirmed in-game, issue
--- #18). See docs/craftsim-recipedata-notes.md for the retired approach, kept for the record.
---
--- Anchored to the bottom-right corner of ProfessionsCustomerOrdersFrame itself (the whole
--- window, not .Form), mirroring exactly how the Profession Shopping List addon anchors its own
--- "Core Alloy" quick-reorder button -- confirmed by reading that addon's actual source
--- (Slackluster/ProfessionShoppingList, modules-old/CraftingOrders.lua, still genuinely loaded
--- despite the folder name -- checked its own .toc):
---
---   app.RepeatQuickOrderButton = app:MakeButton(ProfessionsCustomerOrdersFrame, "")
---   app.RepeatQuickOrderButton:SetPoint("BOTTOMLEFT", ProfessionsCustomerOrdersFrame, 170, 5)
---
--- Three earlier anchor attempts all measured against *that* button's on-screen position
--- (visually, via screenshots) while anchoring to something else entirely -- there was never a
--- stable geometric relationship between those targets and where Core Alloy actually sits, so
--- no fixed offset could converge:
---
--- 1. Originally anchored to TrackRecipeCheckbox's *left*, mirroring how CraftSim anchors its
---    own equivalent button on the other two screens (CraftSim's Modules/CraftQueue/UI.lua:
---    2106-2118) -- but on this screen TrackRecipeCheckbox sits flush against the window's own
---    left edge, so that pushed the button off the visible window entirely (issue #18's
---    in-game recon caught this: the button existed, IsShown() was true, but it was rendering
---    out past the window, over the unit frame).
--- 2. Tried TrackRecipeCheckbox's *right* instead -- back on-window, but Profession Shopping
---    List draws its own wider Track/Untrack buttons over the native checkbox, extending
---    further right than the native frame's own bounds account for, so a fixed offset from the
---    native widget still collided with whatever else happens to share that toolbar row.
--- 3. Tried above Form.AllocateBestQualityCheckbox, then below Form.PaymentContainer.ListOrderButton
---    -- both stayed on-window with no collisions, but repeated pixel nudges against a
---    screenshot of Core Alloy never quite converged, because Core Alloy's own anchor was never
---    related to either of those elements to begin with.
+-- "+ Shopping List" button on the order screen (#18). Anchored to the bottom-right of
+-- ProfessionsCustomerOrdersFrame itself (not .Form), on the same row as Profession Shopping
+-- List's "Core Alloy" button, which anchors BOTTOMLEFT of that frame at (170, 5).
 
 local _, ns = ...
 
 local OrderScreen = ns.OrderScreen
 local L = ns.L
 
--- The same checks RefreshButtonState uses to gate SetEnabled, but returning *why* -- issue #8:
--- this screen's other buttons all show a tooltip explaining themselves (see
--- GameTooltip_AddNormalLine/AddErrorLine usage throughout Blizzard's own
--- Blizzard_ProfessionsCustomerOrdersForm.lua), and this one didn't have one at all. Doesn't
--- cover the buttonEnabled option itself -- per feedback, that hides the button entirely
--- (RefreshButtonState below) rather than graying it out with a reason, since it's a
--- deliberate "don't show this at all" choice, unlike these transient/situational reasons.
+-- Why the button is disabled, for its tooltip (#8). buttonEnabled hides it instead.
 ---@return string? reason nil when the button is/would be enabled
 local function GetDisabledReason()
     if not OrderScreen:IsAuctionatorAvailable() then
@@ -67,13 +29,8 @@ local function GetDisabledReason()
 end
 
 local function RefreshButtonState(button)
-    -- issue #16: the options-panel/slash-command toggle to disable the button entirely --
-    -- hidden, not grayed out, since it's a deliberate "don't show this" choice. Guarded on
-    -- ns.db existing at all -- if Blizzard_ProfessionsCustomerOrders was already loaded by the
-    -- time BestCraft's own files started executing, CreateButton (via OnFormFound's eager
-    -- callback) can run before Core.lua's own ADDON_LOADED handler has, i.e. before ns.db
-    -- exists. Shown by default rather than treating "not yet known" as "user disabled it" --
-    -- matches ns.DEFAULT_SETTINGS.buttonEnabled = true.
+    -- ns.db may not exist yet if the order addon loaded before ours (OnFormFound runs
+    -- eagerly); treat that as the default (shown).
     if ns.db and not ns.db.settings.buttonEnabled then
         button:Hide()
         return
@@ -85,9 +42,7 @@ local function RefreshButtonState(button)
 end
 
 local function OnClick()
-    -- CreateShoppingList now returns a message on both outcomes -- a chat-ready confirmation
-    -- of the recipe/materials added on success (per feedback), the failure reason otherwise --
-    -- so printing whatever comes back covers both without branching on `ok` here.
+    -- The message is either the confirmation or the failure reason.
     local _, message = OrderScreen:CreateShoppingList()
     if message then
         ns.Print(message)
@@ -116,20 +71,11 @@ local function CreateButton(form)
 
     local function Refresh() RefreshButtonState(button) end
 
-    -- Exposed so Options.lua's buttonEnabled checkbox and Core.lua's ResetToDefaults can push
-    -- an immediate refresh when the setting changes while the order window is already open --
-    -- otherwise the button only re-evaluates on the order screen's own OnShow/UpdateReagentSlots
-    -- events, which don't fire just because a setting changed elsewhere (confirmed in-game:
-    -- toggling the option didn't take effect until the window was closed and reopened).
+    -- For setting changes while the window is open (Options.lua, ResetToDefaults).
     ns.RefreshShoppingButton = Refresh
 
     form:HookScript("OnShow", Refresh)
-    -- The order screen doesn't fire a change event when the player picks a different
-    -- recipe or reagent allocation -- UpdateReagentSlots is what it calls internally on
-    -- both, so hooking it (rather than relying on OnShow alone) is what actually keeps the
-    -- button's enabled state in sync while the screen stays open. Matches CraftSim's own
-    -- documented reason for hooking specific methods instead of events on this UI family
-    -- (Modules/Modules.lua:78: "SchematicForm:Init or tab OnClick does not fire").
+    -- No event fires on recipe or allocation changes; the form calls UpdateReagentSlots on both.
     if form.UpdateReagentSlots then
         hooksecurefunc(form, "UpdateReagentSlots", Refresh)
     end

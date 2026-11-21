@@ -1,16 +1,9 @@
 -- Options.lua
 -- SPDX-License-Identifier: GPL-3.0-or-later
 --
--- Options panel (issue #16), matching Crosshairs' and ShoppingConverter's own Options.lua
--- conventions rather than inventing a new one: Settings.RegisterCanvasLayoutCategory +
--- Settings.RegisterAddOnCategory, a CHECKBOXES table Commands.lua's `status` reuses so the
--- two entry points can't list different settings under different labels. Thin by design --
--- there's no tunable optimization behavior in this addon, just a handful of on/off settings.
--- A definition's optional `onChange` (matching Crosshairs' own AddCheckbox(label, tooltip,
--- dbKey, onChange) signature) fires after the setting is written, for a setting whose effect
--- needs to be visible immediately rather than waiting for its own next natural refresh --
--- confirmed in-game that buttonEnabled needed this: toggling it didn't take effect until the
--- order window was closed and reopened.
+-- Options panel (#16). CHECKBOXES is reused by Commands.lua's `status`. A definition's
+-- optional onChange fires after the setting is written, for effects that must apply while the
+-- order window is already open (buttonEnabled).
 
 local _, ns = ...
 
@@ -19,8 +12,6 @@ local L = ns.L
 local Options = {}
 ns.Options = Options
 
--- Exposed as Options.CHECKBOXES so Commands.lua's `status` can list the same toggles under
--- the same labels without a second hand-maintained copy.
 local CHECKBOXES = {
     {
         key = "buttonEnabled",
@@ -80,8 +71,7 @@ local function CreatePanel()
         checkboxes[#checkboxes + 1] = { checkbox = checkbox, key = definition.key }
         anchor = checkbox
     end
-    -- Exposed for tests to reach the checkbox frames directly by key, without guessing their
-    -- position among every frame stub_api.lua's CreateFrame ever created.
+    -- Exposed for tests.
     panel.checkboxes = checkboxes
 
     function panel.RefreshWidgets()
@@ -95,8 +85,6 @@ local function CreatePanel()
     return panel
 end
 
--- Registered once at load: the category needs to exist for the Settings window to list it
--- any time the player opens it, not just while the order screen is open.
 function Options:Register()
     self.panel = CreatePanel()
     local category = Settings.RegisterCanvasLayoutCategory(self.panel, L.OPTIONS_TITLE)
@@ -104,16 +92,13 @@ function Options:Register()
     self.category = category
 end
 
--- Opens the Settings window straight to this panel, e.g. from /bestcraft options.
 function Options:Open()
     if self.category then
         Settings.OpenToCategory(self.category:GetID())
     end
 end
 
--- Shared by ns.ResetToDefaults (Core.lua) and anything else that changes a setting out from
--- under an already-open panel, so a stale checkbox can't sit checked/unchecked opposite to
--- what /bestcraft reset or /bestcraft login just set.
+-- Syncs an already-open panel after a setting changes elsewhere (e.g. /bestcraft reset).
 function Options:RefreshWidgets()
     if self.panel and self.panel.RefreshWidgets then
         self.panel.RefreshWidgets()

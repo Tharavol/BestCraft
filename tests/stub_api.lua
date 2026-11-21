@@ -124,7 +124,6 @@ local function NewEnv(opts)
             return nil
         end,
     }
-    env.GetAddOnMetadata = env.C_AddOns.GetAddOnMetadata
     env.C_TradeSkillUI = {
         GetItemReagentQualityByItemInfo = function(itemID) return api.reagentQualities[itemID] end,
     }
