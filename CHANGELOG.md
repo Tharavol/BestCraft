@@ -4,6 +4,9 @@ All notable changes to the BestCraft addon are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Retail only: the TOC declares `AllowLoadGameType: standard`, so World of Warcraft: Forever lists the addon as unavailable for that game type instead of out of date (#32). Forever's classic-era professions have no reagent quality tiers.
+
 ### Internal
 
 - Trim comments that narrated history or restated code (#28).
